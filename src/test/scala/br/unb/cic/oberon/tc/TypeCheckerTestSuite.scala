@@ -82,7 +82,51 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
     )
   }
 
-  // TODO: Make more tests
+  test("Check comparable operations") {
+    val env = new Environment[Type]()
+    val correctExpressions = List(
+      GTExpression(IntValue(1), IntValue(3)),
+      GTExpression(RealValue(3), RealValue(1)),
+      LTExpression(IntValue(1), IntValue(3)),
+      LTExpression(RealValue(3), RealValue(1)),
+      GTEExpression(IntValue(1), IntValue(3)),
+      GTEExpression(RealValue(3), RealValue(1)),
+      LTEExpression(IntValue(1), IntValue(3)),
+      LTEExpression(RealValue(3), RealValue(1))
+    )
+
+    for (exp <- correctExpressions) {
+      assert(
+        TypeChecker
+          .checkExpression(exp)
+          .runA(env) == Right(BooleanType)
+      )
+    }
+
+    val wrongExpressions = List(
+      GTExpression(IntValue(1), RealValue(3)),
+      GTExpression(RealValue(3), IntValue(1)),
+      GTExpression(BoolValue(true), BoolValue(true)),
+      LTExpression(IntValue(1), RealValue(3)),
+      LTExpression(RealValue(3), IntValue(1)),
+      LTExpression(BoolValue(true), BoolValue(true)),
+      GTEExpression(IntValue(1), RealValue(3)),
+      GTEExpression(RealValue(3), IntValue(1)),
+      GTEExpression(BoolValue(true), BoolValue(true)),
+      LTEExpression(IntValue(1), RealValue(3)),
+      LTEExpression(RealValue(3), IntValue(1)),
+      LTEExpression(BoolValue(true), BoolValue(true))
+    )
+
+    for (exp <- wrongExpressions) {
+      assert(
+        TypeChecker
+          .checkExpression(exp)
+          .runA(new Environment[Type]())
+          .isLeft
+      )
+    }
+  }
 
   // test("Test read int statement type checker") {
   //   val visitor = new TypeChecker(new Environment[Type]())
