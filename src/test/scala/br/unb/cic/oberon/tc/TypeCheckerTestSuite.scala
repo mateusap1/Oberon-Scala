@@ -126,6 +126,101 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
           .isLeft
       )
     }
+
+    assert(
+      TypeChecker
+        .checkExpression(GTExpression(VarExpression("abc"), IntValue(2)))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> IntegerType
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0)
+              )
+            )
+          )
+        ) == Right(BooleanType)
+    )
+  }
+
+  test("Check numeric operations") {
+    val env = new Environment[Type]()
+    val correctExpressions = List(
+      (IntValue(1), IntValue(3), IntegerType),
+      (RealValue(3), RealValue(1), RealType)
+    )
+
+    for ((l, r, t) <- correctExpressions) {
+      for (
+        exp <- List(
+          AddExpression(l, r),
+          SubExpression(l, r),
+          MultExpression(l, r),
+          DivExpression(l, r)
+        )
+      ) {
+        assert(
+          TypeChecker
+            .checkExpression(exp)
+            .runA(env) == Right(t)
+        )
+      }
+    }
+
+    val wrongExpressions = List(
+      (IntValue(1), RealValue(3)),
+      (RealValue(3), IntValue(1)),
+      (BoolValue(true), BoolValue(false))
+    )
+
+    for ((l, r) <- wrongExpressions) {
+      for (
+        exp <- List(
+          AddExpression(l, r),
+          SubExpression(l, r),
+          MultExpression(l, r),
+          DivExpression(l, r)
+        )
+      ) {
+        assert(TypeChecker.checkExpression(exp).runA(env).isLeft)
+      }
+    }
+
+    assert(
+      TypeChecker
+        .checkExpression(AddExpression(VarExpression("abc"), IntValue(2)))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> IntegerType
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0)
+              )
+            )
+          )
+        ) == Right(IntegerType)
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(AddExpression(VarExpression("abc"), RealValue(2)))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> RealType
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0)
+              )
+            )
+          )
+        ) == Right(RealType)
+    )
   }
 
   // test("Test read int statement type checker") {
