@@ -223,6 +223,53 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
     )
   }
 
+  test("Check boolean operations") {
+    val env = new Environment[Type]()
+
+    assert(
+      TypeChecker
+        .checkExpression(AndExpression(BoolValue(true), BoolValue(false)))
+        .runA(env) == Right(BooleanType)
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(OrExpression(BoolValue(true), BoolValue(false)))
+        .runA(env) == Right(BooleanType)
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(AndExpression(IntValue(1), BoolValue(false)))
+        .runA(env)
+        .isLeft
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(OrExpression(IntValue(1), IntValue(2)))
+        .runA(env)
+        .isLeft
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(AndExpression(VarExpression("abc"), BoolValue(false)))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> BooleanType
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0)
+              )
+            )
+          )
+        ) == Right(BooleanType)
+    )
+  }
+
   // test("Test read int statement type checker") {
   //   val visitor = new TypeChecker(new Environment[Type]())
   //   val read01 = ReadIntStmt("x")
