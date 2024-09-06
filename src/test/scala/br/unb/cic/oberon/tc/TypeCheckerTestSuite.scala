@@ -19,13 +19,11 @@ import br.unb.cic.oberon.ir.ast.{OberonModule, VariableDeclaration}
 import br.unb.cic.oberon.environment.Environment
 import org.scalatest.flatspec.AnyFlatSpec
 
-import scala.collection.mutable.Map
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{Map, Stack, ListBuffer}
 
 class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
 
-  test("Test check expression on atomic values") {
-    val env = new Environment[Type]()
+  test("Check expression on atomic values") {
     val atomicValues = List(
       (BoolValue(true), BooleanType),
       (IntValue(1), IntegerType),
@@ -35,9 +33,56 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
     )
 
     for ((atom, t) <- atomicValues) {
-      assert(TypeChecker.checkExpression(atom).runA(env) == Right(t))
+      assert(
+        TypeChecker
+          .checkExpression(atom)
+          .runA(new Environment[Type]()) == Right(t)
+      )
     }
   }
+
+  test("Check var expression") {
+    assert(
+      TypeChecker
+        .checkExpression(VarExpression("abc"))
+        .runA(new Environment[Type]())
+        .isLeft
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(VarExpression("abc"))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> IntegerType
+            ),
+            global = Map(
+              "abc" -> Location(0)
+            )
+          )
+        ) == Right(IntegerType)
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(VarExpression("abc"))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> IntegerType
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0)
+              )
+            )
+          )
+        ) == Right(IntegerType)
+    )
+  }
+
+  // TODO: Make more tests
 
   // test("Test read int statement type checker") {
   //   val visitor = new TypeChecker(new Environment[Type]())
