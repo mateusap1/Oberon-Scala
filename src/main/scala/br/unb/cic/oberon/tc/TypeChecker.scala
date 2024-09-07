@@ -57,6 +57,50 @@ object TypeChecker {
     } yield r
   }
 
+  private def argumentsWrongType(
+      procedureName: String,
+      env: Environment[Type],
+      arguments: List[Expression],
+      expectedArguments: List[FormalArg]
+  ): Option[String] = {
+    // If we return Some(err) there was an error
+    // Otherwise, if we return None, there was no error
+
+    if (arguments.length != expectedArguments.length) {
+      Some(
+        s"Wrong number of arguments for procedure ${procedureName}. " +
+          s"Expected ${expectedArguments.length} but got ${arguments.length}."
+      )
+    } else {
+      // None indicates no error. Some indicates an error.
+      // We start assuming no error. If we find any in the process,
+      // including if there is a different type, we return it.
+
+      arguments
+        .zip(expectedArguments)
+        .foldRight[Option[String]](None)((args, acc) => {
+          acc match {
+            case Some(err) => Some(err)
+            case None => {
+              val (arg: Expression, expArg: FormalArg) = args
+              checkExpression(arg).runA(env) match {
+                case Left(err) => Some(err)
+                case Right(t) => {
+                  if (t == expArg.argumentType) { None }
+                  else {
+                    Some(
+                      s"Wrong argument type for procedure ${procedureName}. " +
+                        s"Expected ${expArg.argumentType} but got ${t}."
+                    )
+                  }
+                }
+              }
+            }
+          }
+        })
+    }
+  }
+
   def checkExpression(exp: Expression): StateOrError[Type] = {
     exp match {
       case IntValue(_)    => pure(IntegerType)
@@ -89,38 +133,29 @@ object TypeChecker {
         checkOperation(l, r, List(BooleanType), BooleanType)
       case OrExpression(l, r) =>
         checkOperation(l, r, List(BooleanType), BooleanType)
-      case FunctionCallExpression(name, args) =>
-        StateT[ErrorOr, Environment[Type], Type](env => {
+      case FunctionCallExpression(name: String, args: List[Expression]) =>
+        StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
           // Find procedure should return an Option? Not currently the case.
-          val procedure = env.findProcedure(name)
+          val procedure: Option[Procedure] = env.lookupProcedure(name)
 
-          if (args.length != procedure.args.length) {
-            Left(
-              s"Wrong number of arguments for procedure ${name}. Expected ${procedure.args.length} but got ${args.length}."
-            )
-          } else {
-            // Make sure all arguments are from the correct type
+          // Question of implementation. How should we handle void return types?
+          // Is using UndefinedType appropriate? Should we use Null instead?
+          // Is UndefinedType necessary at all?
 
-            args
-              .zip(procedure.args)
-              .foldRight[ErrorOr[(Environment[Type], Type)]](
-                Right((env, procedure.returnType.getOrElse(UndefinedType)))
-              )((arg, acc) => {
-                val (exp, fa) = arg
-
-                checkExpression(exp).runA(env) match {
-                  case Left(err) => Left(err)
-                  case Right(t) => {
-                    if (t == fa.argumentType) { acc }
-                    else {
-                      Left(
-                        s"Wrong argument type for procedure ${name}. Expected ${fa.argumentType} but got ${t}."
-                      )
-                    }
+          procedure match {
+            case None => Left(s"Undeclared procedure ${name}!")
+            case Some(p) => {
+              argumentsWrongType(name, env, args, p.args) match {
+                case None =>
+                  p.returnType match {
+                    case None    => Right((env, UndefinedType))
+                    case Some(r) => Right((env, r))
                   }
-                }
-              })
+                case Some(err) => Left(err)
+              }
+            }
           }
+
         })
       case ArrayValue(values, arrayType) => assertError("Not implemented yet.")
       case ArraySubscript(array, index)  => assertError("Not implemented yet.")

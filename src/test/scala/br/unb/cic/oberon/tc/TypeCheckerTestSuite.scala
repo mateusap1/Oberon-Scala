@@ -298,5 +298,38 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
         )
         .runA(env) == Right(RealType)
     )
+
+    assert(
+      TypeChecker
+        .checkExpression(
+          FunctionCallExpression(
+            "cde",
+            List(IntValue(1), BoolValue(false), CharValue('a'))
+          )
+        )
+        .runA(env).isLeft
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(
+          FunctionCallExpression(
+            "abc",
+            List(RealValue(1.0), BoolValue(false), CharValue('a'))
+          )
+        )
+        .runA(env).isLeft
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(
+          FunctionCallExpression(
+            "abc",
+            List(IntValue(1), BoolValue(false), StringValue("a"))
+          )
+        )
+        .runA(env).isLeft
+    )
   }
 }
