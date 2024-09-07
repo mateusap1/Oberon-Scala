@@ -90,38 +90,47 @@ object TypeChecker {
       case OrExpression(l, r) =>
         checkOperation(l, r, List(BooleanType), BooleanType)
       case FunctionCallExpression(name, args) =>
-        assertError("Not implemented yet.")
+        StateT[ErrorOr, Environment[Type], Type](env => {
+          // Find procedure should return an Option? Not currently the case.
+          val procedure = env.findProcedure(name)
+
+          if (args.length != procedure.args.length) {
+            Left(
+              s"Wrong number of arguments for procedure ${name}. Expected ${procedure.args.length} but got ${args.length}."
+            )
+          } else {
+            // Make sure all arguments are from the correct type
+
+            args
+              .zip(procedure.args)
+              .foldRight[ErrorOr[(Environment[Type], Type)]](
+                Right((env, procedure.returnType.getOrElse(UndefinedType)))
+              )((arg, acc) => {
+                val (exp, fa) = arg
+
+                checkExpression(exp).runA(env) match {
+                  case Left(err) => Left(err)
+                  case Right(t) => {
+                    if (t == fa.argumentType) { acc }
+                    else {
+                      Left(
+                        s"Wrong argument type for procedure ${name}. Expected ${fa.argumentType} but got ${t}."
+                      )
+                    }
+                  }
+                }
+              })
+          }
+        })
       case ArrayValue(values, arrayType) => assertError("Not implemented yet.")
       case ArraySubscript(array, index)  => assertError("Not implemented yet.")
       case FieldAccessExpression(exp, attributeName) =>
         assertError("Not implemented yet.")
       case PointerAccessExpression(name) => assertError("Not implemented yet.")
       case LambdaExpression(args, exp)   => assertError("Not implemented yet.")
-
-      //   case FunctionCallExpression(name, args) => { env =>
-      //     {
-      //       val procedure = env.findProcedure(name)
-
-      //       // Verificar tipos de cada argumento
-      //       val errorIfExists = args.foldRight(
-      //         Option[String],
-      //         { (exp, acc) =>
-      //           for {
-      //             _ <- acc
-      //             r <- checkExpression(exp).runA(env) match {
-      //               case Left(err) => Some(err)
-      //               case Right(_)  => None
-      //             }
-      //           } yield r
-      //         }
-      //       )
-
-      //     }
-      //   }
     }
   }
 
-  // O checkModule deverá ser parte do construtor da classe
   def checkModule(module: OberonModule): StateOrError[Type] = {
     assertError("Not Implemented Yet")
   }
@@ -130,74 +139,7 @@ object TypeChecker {
     assertError("Not Implemented Yet")
   }
 
-  // Responsável por retornar as mensagens de erro
   def checkStmt(stmt: Statement): StateOrError[Type] = {
-    assertError("Not Implemented Yet")
-  }
-
-  private def checkAssignment(stmt: Statement): StateOrError[Type] = {
-    assertError("Not Implemented Yet")
-  }
-
-  private def checkVarAssigment(
-      v: String,
-      exp: Expression
-  ): StateOrError[Type] = {
-    assertError("Not Implemented Yet")
-  }
-
-  private def checkPointerAssigment(
-      v: String,
-      exp: Expression
-  ): StateOrError[Type] = {
-    assertError("Not Implemented Yet")
-  }
-
-  private def checkArrayAssigment(
-      arr: Expression,
-      element: Expression,
-      exp: Expression
-  ): StateOrError[Type] = {
-    assertError("Not Implemented Yet")
-  }
-
-  private def checkRecordAssigment(
-      record: Expression,
-      field: String,
-      exp: Expression
-  ): StateOrError[Type] = {
-    assertError("Not Implemented Yet")
-  }
-
-  private def visitIfElseStmt(stmt: Statement): StateOrError[Type] = {
-    assertError("Not Implemented Yet")
-  }
-
-  private def visitWhileStmt(stmt: Statement): StateOrError[Type] = {
-    assertError("Not Implemented Yet")
-  }
-
-  def visitForEachStmt(forEachStmt: ForEachStmt): StateOrError[Type] = {
-    assertError("Not Implemented Yet")
-  }
-
-  private def visitExitStmt(): StateOrError[Type] = assertError(
-    "Not Implemented Yet"
-  )
-
-  /*
-   * Type checker for a procedure call. This is the "toughest" implementation
-   * here. We have to check:
-   *
-   * (a) the procedure exists
-   * (b) the type of the actual arguments match the type of the formal arguments
-   * (c) the procedure body (stmt) is well typed.
-   *
-   * @param stmt (a procedure call)
-   *
-   * @return Our error representation (statement + string with the error message)
-   */
-  private def procedureCallStmt(stmt: Statement): StateOrError[Type] = {
     assertError("Not Implemented Yet")
   }
 }
