@@ -69,7 +69,7 @@ object TypeChecker {
     if (arguments.length != expectedArguments.length) {
       Some(
         s"Wrong number of arguments for procedure ${procedureName}. " +
-          s"Expected ${expectedArguments.length} but got ${arguments.length}."
+          s"Expected ${expectedArguments.length}, but got ${arguments.length}."
       )
     } else {
       // None indicates no error. Some indicates an error.
@@ -90,7 +90,7 @@ object TypeChecker {
                   else {
                     Some(
                       s"Wrong argument type for procedure ${procedureName}. " +
-                        s"Expected ${expArg.argumentType} but got ${t}."
+                        s"Expected ${expArg.argumentType}, but got ${t}."
                     )
                   }
                 }
@@ -157,8 +157,38 @@ object TypeChecker {
           }
 
         })
-      case ArrayValue(values, arrayType) => assertError("Not implemented yet.")
-      case ArraySubscript(array, index)  => assertError("Not implemented yet.")
+      case ArrayValue(values, arrayType) =>
+        StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
+          val typeError = values.foldRight[Option[String]](None)(
+            (exp: Expression, acc: Option[String]) => {
+              acc match {
+                case Some(err) => Some(err)
+                case None => {
+                  checkExpression(exp).runA(env) match {
+                    case Left(err) => Some(err)
+                    case Right(t: Type) => {
+                      if (t == arrayType.baseType) { None }
+                      else {
+                        Some(
+                          s"Element from array of wrong type. "
+                            + s"Expected type ${arrayType}, but got ${t}."
+                        )
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          )
+
+          // Should we check size of array as well? Or is that guaranteed already?
+
+          typeError match {
+            case Some(err) => Left(err)
+            case None      => Right((env, arrayType))
+          }
+        })
+      case ArraySubscript(array, index) => assertError("Not implemented yet.")
       case FieldAccessExpression(exp, attributeName) =>
         assertError("Not implemented yet.")
       case PointerAccessExpression(name) => assertError("Not implemented yet.")

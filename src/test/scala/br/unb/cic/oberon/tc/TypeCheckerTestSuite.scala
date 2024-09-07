@@ -307,7 +307,8 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
             List(IntValue(1), BoolValue(false), CharValue('a'))
           )
         )
-        .runA(env).isLeft
+        .runA(env)
+        .isLeft
     )
 
     assert(
@@ -318,7 +319,8 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
             List(RealValue(1.0), BoolValue(false), CharValue('a'))
           )
         )
-        .runA(env).isLeft
+        .runA(env)
+        .isLeft
     )
 
     assert(
@@ -329,7 +331,24 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
             List(IntValue(1), BoolValue(false), StringValue("a"))
           )
         )
-        .runA(env).isLeft
+        .runA(env)
+        .isLeft
     )
   }
+
+  test("Check array definitions") {
+    val env = new Environment[Type]()
+
+    assert(
+      TypeChecker
+        .checkExpression(
+          ArrayValue(
+            ListBuffer(IntValue(1), IntValue(2), IntValue(3)),
+            ArrayType(3, IntegerType)
+          )
+        )
+        .runA(env) == Right(ArrayType(3, IntegerType))
+    )
+  }
+
 }
