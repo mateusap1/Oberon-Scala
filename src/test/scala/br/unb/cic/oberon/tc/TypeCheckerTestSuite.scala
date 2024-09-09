@@ -336,7 +336,7 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
     )
   }
 
-  test("Check array definitions") {
+  test("Check array definition") {
     val env = new Environment[Type]()
 
     assert(
@@ -351,4 +351,31 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
     )
   }
 
+  test("Check array subscript") {
+    val env = new Environment[Type]()
+    val arr = ArrayValue(
+      ListBuffer(RealValue(1.0), RealValue(2.0), RealValue(3.0)),
+      ArrayType(3, RealType)
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(ArraySubscript(arr, IntValue(0)))
+        .runA(env) == Right(RealType)
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(ArraySubscript(arr, RealValue(0.0)))
+        .runA(env)
+        .isLeft
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(ArraySubscript(IntValue(3), RealValue(0.0)))
+        .runA(env)
+        .isLeft
+    )
+  }
 }

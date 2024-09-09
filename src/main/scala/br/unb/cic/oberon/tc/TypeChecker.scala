@@ -188,7 +188,26 @@ object TypeChecker {
             case None      => Right((env, arrayType))
           }
         })
-      case ArraySubscript(array, index) => assertError("Not implemented yet.")
+      case ArraySubscript(array: Expression, index: Expression) => {
+        for {
+          at <- checkExpression(array)
+          it <- checkExpression(index)
+          r <- at match {
+            case ArrayType(_, bt) =>
+              it match {
+                case IntegerType => pure(bt)
+                case _ =>
+                  assertError(
+                    s"Tried to subscript array with index of type ${it}. Expected IntegerType!"
+                  )
+              }
+            case _ =>
+              assertError(
+                s"Tried to subscript element of type ${at}. Expected ArrayType!"
+              )
+          }
+        } yield r
+      }
       case FieldAccessExpression(exp, attributeName) =>
         assertError("Not implemented yet.")
       case PointerAccessExpression(name) => assertError("Not implemented yet.")
