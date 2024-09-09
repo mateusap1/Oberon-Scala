@@ -108,6 +108,7 @@ object TypeChecker {
       case CharValue(_)   => pure(CharacterType)
       case BoolValue(_)   => pure(BooleanType)
       case StringValue(_) => pure(StringType)
+      case Location(_) => pure(LocationType)
       case NullValue      => pure(NullType)
       case Undef()        => assertError("Undefined type.")
       case VarExpression(name) =>
@@ -215,13 +216,6 @@ object TypeChecker {
         } yield r
       }
       case FieldAccessExpression(exp: Expression, attributeName: String) => {
-        // It doesn't seem like this could ever work. We expect an expression, which
-        // when checked will evaluate to RecordType. However in no case handled
-        // we return record type for any expression. So this will never happen.
-
-        // There is no value however that seems to represent a record value,
-        // like we have with ArrayValue.
-
         for {
           t <- checkExpression(exp)
           r <- t match {
@@ -246,7 +240,7 @@ object TypeChecker {
                           )
                       }
                     }
-                    case None =>
+                    case _ =>
                       Left(
                         s"Tried to access field from user-defined type ${name} but type does not exist."
                       )
@@ -260,7 +254,12 @@ object TypeChecker {
           }
         } yield r
       }
-      case PointerAccessExpression(name) => assertError("Not implemented yet.")
+      case PointerAccessExpression(name: String) => StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
+        env.lookup(name) match {
+          case Some(PointerType(vt)) => Right((env, vt))
+          case _ => Left(s"Could not find pointer with name ${name}.")
+        }
+      })
       case LambdaExpression(args, exp)   => assertError("Not implemented yet.")
     }
   }
