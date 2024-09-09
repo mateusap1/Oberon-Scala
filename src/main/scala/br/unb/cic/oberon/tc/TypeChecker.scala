@@ -182,6 +182,12 @@ object TypeChecker {
           )
 
           // Should we check size of array as well? Or is that guaranteed already?
+          // Not checking right now: Can declare ArrayValue(
+          //  ListBuffer(1, 2, 3),
+          //  ArrayType(length: 42, baseType: IntegerType)
+          // )
+          // Meaning the list has 3 elements but length says it should have 42
+          // Previous implementation did not handle that either.
 
           typeError match {
             case Some(err) => Left(err)
@@ -208,8 +214,52 @@ object TypeChecker {
           }
         } yield r
       }
-      case FieldAccessExpression(exp, attributeName) =>
-        assertError("Not implemented yet.")
+      case FieldAccessExpression(exp: Expression, attributeName: String) => {
+        // It doesn't seem like this could ever work. We expect an expression, which
+        // when checked will evaluate to RecordType. However in no case handled
+        // we return record type for any expression. So this will never happen.
+
+        // There is no value however that seems to represent a record value,
+        // like we have with ArrayValue.
+
+        for {
+          t <- checkExpression(exp)
+          r <- t match {
+            case RecordType(vars) =>
+              vars.find(v => v.name == attributeName) match {
+                case Some(v) => pure(v.variableType)
+                case None =>
+                  assertError(
+                    s"Tried to access record with field ${attributeName} which does not exist."
+                  )
+              }
+            case ReferenceToUserDefinedType(name) =>
+              StateT[ErrorOr, Environment[Type], Type](
+                (env: Environment[Type]) => {
+                  env.lookupUserDefinedType(name) match {
+                    case Some(UserDefinedType(_, RecordType(vars))) => {
+                      vars.find(v => v.name == attributeName) match {
+                        case Some(v) => Right((env, v.variableType))
+                        case None =>
+                          Left(
+                            s"Tried to access field from ${name} with field ${attributeName} which does not exist."
+                          )
+                      }
+                    }
+                    case None =>
+                      Left(
+                        s"Tried to access field from user-defined type ${name} but type does not exist."
+                      )
+                  }
+                }
+              )
+            case _ =>
+              assertError(
+                s"Tried to access field from type ${t}. Expected RecordType."
+              )
+          }
+        } yield r
+      }
       case PointerAccessExpression(name) => assertError("Not implemented yet.")
       case LambdaExpression(args, exp)   => assertError("Not implemented yet.")
     }
