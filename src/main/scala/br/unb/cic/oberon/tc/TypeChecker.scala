@@ -68,42 +68,10 @@ object TypeChecker {
         } yield r
       }
       case ArrayValue(values, arrayType) =>
-        StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
-          val typeError = values.foldRight[Option[String]](None)(
-            (exp: Expression, acc: Option[String]) => {
-              acc match {
-                case Some(err) => Some(err)
-                case None => {
-                  checkExpression(exp).runA(env) match {
-                    case Left(err) => Some(err)
-                    case Right(t: Type) => {
-                      if (t == arrayType.baseType) { None }
-                      else {
-                        Some(
-                          s"Element from array of wrong type. "
-                            + s"Expected type ${arrayType}, but got ${t}."
-                        )
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          )
-
-          // Should we check size of array as well? Or is that guaranteed already?
-          // Not checking right now: Can declare ArrayValue(
-          //  ListBuffer(1, 2, 3),
-          //  ArrayType(length: 42, baseType: IntegerType)
-          // )
-          // Meaning the list has 3 elements but length says it should have 42
-          // Previous implementation did not handle that either.
-
-          typeError match {
-            case Some(err) => Left(err)
-            case None      => Right((env, arrayType))
-          }
-        })
+        for {
+          ts <- checkExpressions(values.toList)
+          _ <- enforceTypes(ts, arrayType.baseType)
+        } yield arrayType
       case ArraySubscript(array: Expression, index: Expression) => {
         for {
           at <- checkExpression(array)
@@ -259,6 +227,9 @@ object TypeChecker {
 
   private def enforceType(at: Type, et: Type): StateOrError[Type] =
     enforceAnyType(at, List(et))
+
+  private def enforceTypes(ts: List[Type], et: Type): StateOrError[Type] =
+    ts.foldRight[StateOrError[Type]](pure(et))((t, acc) => enforceType(t, et))
 
   private def enforceAnyType(t: Type, ts: List[Type]): StateOrError[Type] = {
     if (ts.contains(t)) {
