@@ -78,16 +78,15 @@ object TypeChecker {
           it <- checkExpression(index)
           r <- at match {
             case ArrayType(_, bt) =>
-              it match {
-                case IntegerType => pure(bt)
-                case _ =>
-                  assertError(
-                    s"Tried to subscript array with index of type ${it}. Expected IntegerType!"
-                  )
-              }
+              for {
+                _ <- wrapError(
+                  enforceType(it, IntegerType),
+                  "ArraySubscriptError: Element from array has wrong type!"
+                )
+              } yield bt
             case _ =>
               assertError(
-                s"Tried to subscript element of type ${at}. Expected ArrayType!"
+                s"ArraySubscriptError: Tried to subscript element of type ${at}. Expected ArrayType!"
               )
           }
         } yield r
@@ -97,33 +96,34 @@ object TypeChecker {
           t <- checkExpression(exp)
           r <- t match {
             case RecordType(vars) =>
-              vars.find(v => v.name == attributeName) match {
-                case Some(v) => pure(v.variableType)
-                case None =>
-                  assertError(
-                    s"Tried to access record with field ${attributeName} which does not exist."
-                  )
-              }
+              for {
+                v <- wrapError(
+                  find[VariableDeclaration](
+                    vars,
+                    (v => v.name == attributeName)
+                  ),
+                  s"FieldAccessError: Attribute ${attributeName} does not exist."
+                )
+              } yield v.variableType
             case ReferenceToUserDefinedType(name) =>
-              StateT[ErrorOr, Environment[Type], Type](
-                (env: Environment[Type]) => {
-                  env.lookupUserDefinedType(name) match {
-                    case Some(UserDefinedType(_, RecordType(vars))) => {
-                      vars.find(v => v.name == attributeName) match {
-                        case Some(v) => Right((env, v.variableType))
-                        case None =>
-                          Left(
-                            s"Tried to access field from ${name} with field ${attributeName} which does not exist."
-                          )
-                      }
-                    }
-                    case _ =>
-                      Left(
-                        s"Tried to access field from user-defined type ${name} but type does not exist."
+              for {
+                u <- lookupUserDefinedType(name)
+                vs <- u match {
+                  case UserDefinedType(_, RecordType(vars)) =>
+                    pure(vars)
+                   case _ =>
+                      assertError(
+                        "FieldAccessError: User type does not have attributes."
                       )
-                  }
                 }
-              )
+                v <- wrapError(
+                  find[VariableDeclaration](
+                    vs,
+                    (v => v.name == attributeName)
+                  ),
+                  s"FieldAccessError: Attribute ${attributeName} does not exist."
+                )
+              } yield v.variableType
             case _ =>
               assertError(
                 s"Tried to access field from type ${t}. Expected RecordType."
@@ -198,6 +198,25 @@ object TypeChecker {
     }
   }
 
+  private def wrapError[A](
+      wrapped: StateOrError[A],
+      error: String
+  ): StateOrError[A] = {
+    StateT[ErrorOr, Environment[Type], A]((env: Environment[Type]) => {
+      wrapped.runA(env) match {
+        case Left(_)  => Left(error)
+        case Right(r) => Right((env, r))
+      }
+    })
+  }
+
+  private def find[A](xs: List[A], p: A => Boolean): StateOrError[A] = {
+    xs.find(p) match {
+      case Some(v) => pure(v)
+      case None    => assertError("ElementNotFoundError")
+    }
+  }
+
   private def checkExpressions(
       exps: List[Expression]
   ): StateOrError[List[Type]] = {
@@ -208,6 +227,18 @@ object TypeChecker {
       } yield (t :: ts)
     )
   }
+
+  private def lookupUserDefinedType(
+      name: String
+  ): StateOrError[UserDefinedType] =
+    StateT[ErrorOr, Environment[Type], UserDefinedType](
+      (env: Environment[Type]) => {
+        env.lookupUserDefinedType(name) match {
+          case Some(u) => Right((env, u))
+          case None    => Left(s"Undefined user defined type ${name}.")
+        }
+      }
+    )
 
   private def lookupProcedure(name: String): StateOrError[Procedure] =
     StateT[ErrorOr, Environment[Type], Procedure]((env: Environment[Type]) => {
@@ -246,10 +277,7 @@ object TypeChecker {
       resType: Type
   ): StateOrError[Type] = {
     for {
-      t1 <- checkExpression(lExpr)
-      t2 <- checkExpression(rExpr)
-      t <- enforceType(t1, t2)
-      _ <- enforceAnyType(t, expTypes)
+      _ <- checkOperationKeepType(lExpr, rExpr, expTypes)
     } yield resType
   }
 
@@ -264,52 +292,5 @@ object TypeChecker {
       t <- enforceType(t1, t2)
       _ <- enforceAnyType(t, expTypes)
     } yield t
-  }
-
-  private def argumentsWrongType(
-      procedureName: String,
-      env: Environment[Type],
-      arguments: List[Expression],
-      expectedArguments: List[FormalArg]
-  ): Option[String] = {
-    // If we return Some(err) there was an error
-    // Otherwise, if we return None, there was no error
-
-    if (arguments.length != expectedArguments.length) {
-      Some(
-        s"Wrong number of arguments for procedure ${procedureName}. " +
-          s"Expected ${expectedArguments.length}, but got ${arguments.length}."
-      )
-    } else {
-      // None indicates no error. Some indicates an error.
-      // We start assuming no error. If we find any in the process,
-      // including if there is a different type, we return it.
-
-      // TODO: Review this implementation, seems more complex than
-      // it should be
-
-      arguments
-        .zip(expectedArguments)
-        .foldRight[Option[String]](None)((args, acc) => {
-          acc match {
-            case Some(err) => Some(err)
-            case None => {
-              val (arg: Expression, expArg: FormalArg) = args
-              checkExpression(arg).runA(env) match {
-                case Left(err) => Some(err)
-                case Right(t) => {
-                  if (t == expArg.argumentType) { None }
-                  else {
-                    Some(
-                      s"Wrong argument type for procedure ${procedureName}. " +
-                        s"Expected ${expArg.argumentType}, but got ${t}."
-                    )
-                  }
-                }
-              }
-            }
-          }
-        })
-    }
   }
 }
