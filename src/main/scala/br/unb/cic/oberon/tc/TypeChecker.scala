@@ -119,6 +119,10 @@ object TypeChecker {
             case Some(t) => Right((env, t))
           }
         )
+      case EQExpression(l, r) =>
+        checkOperation(l, r, comparableTypes, BooleanType)
+      case NEQExpression(l, r) =>
+        checkOperation(l, r, comparableTypes, BooleanType)
       case GTExpression(l, r) =>
         checkOperation(l, r, comparableTypes, BooleanType)
       case LTExpression(l, r) =>
@@ -131,10 +135,23 @@ object TypeChecker {
       case SubExpression(l, r)  => checkOperationKeepType(l, r, numericTypes)
       case MultExpression(l, r) => checkOperationKeepType(l, r, numericTypes)
       case DivExpression(l, r)  => checkOperationKeepType(l, r, numericTypes)
+      case ModExpression(l, r)  => checkOperationKeepType(l, r, numericTypes)
       case AndExpression(l, r) =>
         checkOperation(l, r, List(BooleanType), BooleanType)
       case OrExpression(l, r) =>
         checkOperation(l, r, List(BooleanType), BooleanType)
+      case NotExpression(exp) =>
+        for {
+          t <- checkExpression(exp)
+          r <- t match {
+            case BooleanType => pure(BooleanType)
+            case t2 =>
+              assertError(
+                s"Unexpected type for NotExpression. Expected BooleanType. Received ${t2}."
+              )
+          }
+        } yield r
+      case Brackets(exp) => checkExpression(exp)
       case FunctionCallExpression(name: String, args: List[Expression]) =>
         StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
           // Find procedure should return an Option? Not currently the case.
