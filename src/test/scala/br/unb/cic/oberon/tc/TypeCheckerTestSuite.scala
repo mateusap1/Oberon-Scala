@@ -397,4 +397,37 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
         .runA(env) == Right(IntegerType)
     )
   }
+
+  test("Check lambda expression") {
+    val env = new Environment[Type]()
+
+    assert(
+      TypeChecker
+        .checkExpression(
+          LambdaExpression(
+            List(
+              ParameterByReference("x", IntegerType),
+              ParameterByReference("y", IntegerType)
+            ),
+            GTExpression(VarExpression("x"), VarExpression("y"))
+          )
+        )
+        .runA(env) == Right(BooleanType)
+    )
+
+    assert(
+      TypeChecker
+        .checkExpression(
+          LambdaExpression(
+            List(
+              ParameterByReference("x", IntegerType),
+              ParameterByReference("y", IntegerType)
+            ),
+            GTExpression(VarExpression("x"), VarExpression("z"))
+          )
+        )
+        .runA(env)
+        .isLeft
+    )
+  }
 }

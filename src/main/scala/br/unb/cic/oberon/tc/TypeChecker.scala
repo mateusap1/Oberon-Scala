@@ -8,6 +8,7 @@ import br.unb.cic.oberon.visitor.OberonVisitorAdapter
 
 import cats.data.State
 import cats.data.StateT
+import org.antlr.stringtemplate.language.FormalArgument
 
 object TypeChecker {
   val comparableTypes = List(IntegerType, RealType)
@@ -108,7 +109,7 @@ object TypeChecker {
       case CharValue(_)   => pure(CharacterType)
       case BoolValue(_)   => pure(BooleanType)
       case StringValue(_) => pure(StringType)
-      case Location(_) => pure(LocationType)
+      case Location(_)    => pure(LocationType)
       case NullValue      => pure(NullType)
       case Undef()        => assertError("Undefined type.")
       case VarExpression(name) =>
@@ -254,13 +255,27 @@ object TypeChecker {
           }
         } yield r
       }
-      case PointerAccessExpression(name: String) => StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
-        env.lookup(name) match {
-          case Some(PointerType(vt)) => Right((env, vt))
-          case _ => Left(s"Could not find pointer with name ${name}.")
-        }
-      })
-      case LambdaExpression(args, exp)   => assertError("Not implemented yet.")
+      case PointerAccessExpression(name: String) =>
+        StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
+          env.lookup(name) match {
+            case Some(PointerType(vt)) => Right((env, vt))
+            case _ => Left(s"Could not find pointer with name ${name}.")
+          }
+        })
+      case LambdaExpression(args: List[FormalArg], exp: Expression) =>
+        StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
+          // We insert those argument into our environment and then evaluate the
+          // expression
+          val nEnv = args.foldRight[Environment[Type]](env)(
+            (arg: FormalArg, acc: Environment[Type]) =>
+              acc.setLocalVariable(arg.name, arg.argumentType)
+          )
+
+          checkExpression(exp).runA(nEnv) match {
+            case Left(err) => Left(err)
+            case Right(t)  => Right((env, t))
+          }
+        })
     }
   }
 
