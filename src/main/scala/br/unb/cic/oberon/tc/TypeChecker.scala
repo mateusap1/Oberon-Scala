@@ -14,111 +14,17 @@ object TypeChecker {
   val comparableTypes = List(IntegerType, RealType)
   val numericTypes = List(IntegerType, RealType)
 
-  private def validOperationTypes(
-      left: Type,
-      right: Type,
-      expected: List[Type],
-      result: Type
-  ): StateOrError[Type] = {
-    if (left == right) {
-      if (expected.contains(left)) {
-        pure(result)
-      } else {
-        assertError(s"Type ${left} is not comparable")
-      }
-    } else {
-      assertError(
-        "Binary operation received expressions of different types"
-      )
-    }
-  }
-
-  private def checkOperation(
-      left: Expression,
-      right: Expression,
-      expected: List[Type],
-      result: Type
-  ): StateOrError[Type] = {
-    for {
-      t1 <- checkExpression(left)
-      t2 <- checkExpression(right)
-      r <- validOperationTypes(t1, t2, expected, result)
-    } yield r
-  }
-
-  private def checkOperationKeepType(
-      left: Expression,
-      right: Expression,
-      expected: List[Type]
-  ): StateOrError[Type] = {
-    for {
-      t1 <- checkExpression(left)
-      t2 <- checkExpression(right)
-      r <- validOperationTypes(t1, t2, expected, t1)
-    } yield r
-  }
-
-  private def argumentsWrongType(
-      procedureName: String,
-      env: Environment[Type],
-      arguments: List[Expression],
-      expectedArguments: List[FormalArg]
-  ): Option[String] = {
-    // If we return Some(err) there was an error
-    // Otherwise, if we return None, there was no error
-
-    if (arguments.length != expectedArguments.length) {
-      Some(
-        s"Wrong number of arguments for procedure ${procedureName}. " +
-          s"Expected ${expectedArguments.length}, but got ${arguments.length}."
-      )
-    } else {
-      // None indicates no error. Some indicates an error.
-      // We start assuming no error. If we find any in the process,
-      // including if there is a different type, we return it.
-
-      arguments
-        .zip(expectedArguments)
-        .foldRight[Option[String]](None)((args, acc) => {
-          acc match {
-            case Some(err) => Some(err)
-            case None => {
-              val (arg: Expression, expArg: FormalArg) = args
-              checkExpression(arg).runA(env) match {
-                case Left(err) => Some(err)
-                case Right(t) => {
-                  if (t == expArg.argumentType) { None }
-                  else {
-                    Some(
-                      s"Wrong argument type for procedure ${procedureName}. " +
-                        s"Expected ${expArg.argumentType}, but got ${t}."
-                    )
-                  }
-                }
-              }
-            }
-          }
-        })
-    }
-  }
-
   def checkExpression(exp: Expression): StateOrError[Type] = {
     exp match {
-      case IntValue(_)    => pure(IntegerType)
-      case RealValue(_)   => pure(RealType)
-      case CharValue(_)   => pure(CharacterType)
-      case BoolValue(_)   => pure(BooleanType)
-      case StringValue(_) => pure(StringType)
-      case Location(_)    => pure(LocationType)
-      case NullValue      => pure(NullType)
-      case Undef()        => assertError("Undefined type.")
-      case VarExpression(name) =>
-        StateT[ErrorOr, Environment[Type], Type](env =>
-          env.lookup(name) match {
-            case None    => Left(s"Undefined type for variable ${name}.")
-            case Some(t) => Right((env, t))
-          }
-        )
+      case IntValue(_)         => pure(IntegerType)
+      case RealValue(_)        => pure(RealType)
+      case CharValue(_)        => pure(CharacterType)
+      case BoolValue(_)        => pure(BooleanType)
+      case StringValue(_)      => pure(StringType)
+      case Location(_)         => pure(LocationType)
+      case NullValue           => pure(NullType)
+      case Undef()             => assertError("Undefined type.")
+      case VarExpression(name) => lookupVariable(name)
       case EQExpression(l, r) =>
         checkOperation(l, r, comparableTypes, BooleanType)
       case NEQExpression(l, r) =>
@@ -143,39 +49,24 @@ object TypeChecker {
       case NotExpression(exp) =>
         for {
           t <- checkExpression(exp)
-          r <- t match {
-            case BooleanType => pure(BooleanType)
-            case t2 =>
-              assertError(
-                s"Unexpected type for NotExpression. Expected BooleanType. Received ${t2}."
-              )
-          }
+          r <- enforceType(t, BooleanType)
         } yield r
       case Brackets(exp) => checkExpression(exp)
-      case FunctionCallExpression(name: String, args: List[Expression]) =>
-        StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
-          // Find procedure should return an Option? Not currently the case.
-          val procedure: Option[Procedure] = env.lookupProcedure(name)
-
-          // Question of implementation. How should we handle void return types?
-          // Is using UndefinedType appropriate? Should we use Null instead?
-          // Is UndefinedType necessary at all?
-
-          procedure match {
-            case None => Left(s"Undeclared procedure ${name}!")
-            case Some(p) => {
-              argumentsWrongType(name, env, args, p.args) match {
-                case None =>
-                  p.returnType match {
-                    case None    => Right((env, UndefinedType))
-                    case Some(r) => Right((env, r))
-                  }
-                case Some(err) => Left(err)
-              }
+      case FunctionCallExpression(name: String, args: List[Expression]) => {
+        for {
+          p <- lookupProcedure(name)
+          ts <- checkExpressions(args)
+          _ <-
+            if (p.args.map[Type](fa => fa.argumentType) == ts) { pure(()) }
+            else {
+              assertError(s"Wrong type for argument of function ${name}.")
             }
+          r <- p.returnType match {
+            case None    => pure(UndefinedType)
+            case Some(r) => pure(r)
           }
-
-        })
+        } yield r
+      }
       case ArrayValue(values, arrayType) =>
         StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
           val typeError = values.foldRight[Option[String]](None)(
@@ -300,11 +191,154 @@ object TypeChecker {
     assertError("Not Implemented Yet")
   }
 
-  def checkProcedure(procedure: Procedure): StateOrError[Type] = {
-    assertError("Not Implemented Yet")
+  def checkStmt(stmt: Statement): StateOrError[Type] = stmt match {
+    case ReadLongRealStmt(v: String) => {
+      for {
+        t <- lookupVariable(v)
+        r <- enforceType(t, RealType)
+      } yield r
+    }
+    case ReadRealStmt(v: String) => {
+      for {
+        t <- lookupVariable(v)
+        r <- enforceType(t, RealType)
+      } yield r
+    }
+    case ReadLongIntStmt(v: String) => {
+      for {
+        t <- lookupVariable(v)
+        r <- enforceType(t, IntegerType)
+      } yield r
+    }
+    case ReadIntStmt(v: String) => {
+      for {
+        t <- lookupVariable(v)
+        r <- enforceType(t, IntegerType)
+      } yield r
+    }
+    case ReadShortIntStmt(v: String) => {
+      for {
+        t <- lookupVariable(v)
+        r <- enforceType(t, IntegerType)
+      } yield r
+    }
+    case ReadCharStmt(v: String) => {
+      for {
+        t <- lookupVariable(v)
+        r <- enforceType(t, CharacterType)
+      } yield r
+    }
   }
 
-  def checkStmt(stmt: Statement): StateOrError[Type] = {
-    assertError("Not Implemented Yet")
+  private def checkExpressions(
+      exps: List[Expression]
+  ): StateOrError[List[Type]] = {
+    exps.foldRight[StateOrError[List[Type]]](pure(List()))((exp, acc) =>
+      for {
+        t <- checkExpression(exp)
+        ts <- acc
+      } yield (t :: ts)
+    )
+  }
+
+  private def lookupProcedure(name: String): StateOrError[Procedure] =
+    StateT[ErrorOr, Environment[Type], Procedure]((env: Environment[Type]) => {
+      env.lookupProcedure(name) match {
+        case Some(p) => Right((env, p))
+        case None    => Left(s"Undefined procedure ${name}.")
+      }
+    })
+
+  private def lookupVariable(name: String): StateOrError[Type] =
+    StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
+      env.lookup(name) match {
+        case Some(t) => Right((env, t))
+        case None    => Left(s"Undefined variable ${name}.")
+      }
+    })
+
+  private def enforceType(at: Type, et: Type): StateOrError[Type] =
+    enforceAnyType(at, List(et))
+
+  private def enforceAnyType(t: Type, ts: List[Type]): StateOrError[Type] = {
+    if (ts.contains(t)) {
+      pure(t)
+    } else {
+      assertError(s"Unexpected type ${t}.")
+    }
+  }
+
+  private def checkOperation(
+      lExpr: Expression,
+      rExpr: Expression,
+      expTypes: List[Type],
+      resType: Type
+  ): StateOrError[Type] = {
+    for {
+      t1 <- checkExpression(lExpr)
+      t2 <- checkExpression(rExpr)
+      t <- enforceType(t1, t2)
+      _ <- enforceAnyType(t, expTypes)
+    } yield resType
+  }
+
+  private def checkOperationKeepType(
+      lExpr: Expression,
+      rExpr: Expression,
+      expTypes: List[Type]
+  ): StateOrError[Type] = {
+    for {
+      t1 <- checkExpression(lExpr)
+      t2 <- checkExpression(rExpr)
+      t <- enforceType(t1, t2)
+      _ <- enforceAnyType(t, expTypes)
+    } yield t
+  }
+
+  private def argumentsWrongType(
+      procedureName: String,
+      env: Environment[Type],
+      arguments: List[Expression],
+      expectedArguments: List[FormalArg]
+  ): Option[String] = {
+    // If we return Some(err) there was an error
+    // Otherwise, if we return None, there was no error
+
+    if (arguments.length != expectedArguments.length) {
+      Some(
+        s"Wrong number of arguments for procedure ${procedureName}. " +
+          s"Expected ${expectedArguments.length}, but got ${arguments.length}."
+      )
+    } else {
+      // None indicates no error. Some indicates an error.
+      // We start assuming no error. If we find any in the process,
+      // including if there is a different type, we return it.
+
+      // TODO: Review this implementation, seems more complex than
+      // it should be
+
+      arguments
+        .zip(expectedArguments)
+        .foldRight[Option[String]](None)((args, acc) => {
+          acc match {
+            case Some(err) => Some(err)
+            case None => {
+              val (arg: Expression, expArg: FormalArg) = args
+              checkExpression(arg).runA(env) match {
+                case Left(err) => Some(err)
+                case Right(t) => {
+                  if (t == expArg.argumentType) { None }
+                  else {
+                    Some(
+                      s"Wrong argument type for procedure ${procedureName}. " +
+                        s"Expected ${expArg.argumentType}, but got ${t}."
+                    )
+                  }
+                }
+              }
+            }
+          }
+        })
+    }
   }
 }
