@@ -430,4 +430,61 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
         .isLeft
     )
   }
+
+  test("Check read stmts") {
+    assert(
+      TypeChecker
+        .checkStmt(ReadLongRealStmt("abc"))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> RealType
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0)
+              )
+            )
+          )
+        ) == Right(NullType)
+    )
+
+    assert(
+      TypeChecker
+        .checkStmt(ReadLongRealStmt("abc"))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> RealType
+            ),
+            global = Map(
+              "abc" -> Location(0)
+            )
+          )
+        ) == Right(NullType)
+    )
+
+    assert(
+      TypeChecker
+        .checkStmt(ReadLongRealStmt("abc"))
+        .runA(new Environment[Type]())
+        .isLeft
+    )
+
+    assert(
+      TypeChecker
+        .checkStmt(ReadLongRealStmt("abc"))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> IntegerType
+            ),
+            global = Map(
+              "abc" -> Location(0)
+            )
+          )
+        )
+        .isLeft
+    )
+  }
 }

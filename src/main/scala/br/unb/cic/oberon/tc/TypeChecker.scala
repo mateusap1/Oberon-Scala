@@ -8,7 +8,6 @@ import br.unb.cic.oberon.visitor.OberonVisitorAdapter
 
 import cats.data.State
 import cats.data.StateT
-import org.antlr.stringtemplate.language.FormalArgument
 
 object TypeChecker {
   val comparableTypes = List(IntegerType, RealType)
@@ -111,10 +110,10 @@ object TypeChecker {
                 vs <- u match {
                   case UserDefinedType(_, RecordType(vars)) =>
                     pure(vars)
-                   case _ =>
-                      assertError(
-                        "FieldAccessError: User type does not have attributes."
-                      )
+                  case _ =>
+                    assertError(
+                      "FieldAccessError: User type does not have attributes."
+                    )
                 }
                 v <- wrapError(
                   find[VariableDeclaration](
@@ -160,42 +159,18 @@ object TypeChecker {
   }
 
   def checkStmt(stmt: Statement): StateOrError[Type] = stmt match {
-    case ReadLongRealStmt(v: String) => {
-      for {
-        t <- lookupVariable(v)
-        r <- enforceType(t, RealType)
-      } yield r
-    }
-    case ReadRealStmt(v: String) => {
-      for {
-        t <- lookupVariable(v)
-        r <- enforceType(t, RealType)
-      } yield r
-    }
-    case ReadLongIntStmt(v: String) => {
-      for {
-        t <- lookupVariable(v)
-        r <- enforceType(t, IntegerType)
-      } yield r
-    }
-    case ReadIntStmt(v: String) => {
-      for {
-        t <- lookupVariable(v)
-        r <- enforceType(t, IntegerType)
-      } yield r
-    }
-    case ReadShortIntStmt(v: String) => {
-      for {
-        t <- lookupVariable(v)
-        r <- enforceType(t, IntegerType)
-      } yield r
-    }
-    case ReadCharStmt(v: String) => {
-      for {
-        t <- lookupVariable(v)
-        r <- enforceType(t, CharacterType)
-      } yield r
-    }
+    case ReadLongRealStmt(v: String) =>
+      wrapValue[Type](lookupTypedVariable(v, RealType), NullType)
+    case ReadRealStmt(v: String) =>
+      wrapValue[Type](lookupTypedVariable(v, RealType), NullType)
+    case ReadLongIntStmt(v: String) =>
+      wrapValue[Type](lookupTypedVariable(v, IntegerType), NullType)
+    case ReadIntStmt(v: String) =>
+      wrapValue[Type](lookupTypedVariable(v, IntegerType), NullType)
+    case ReadShortIntStmt(v: String) =>
+      wrapValue[Type](lookupTypedVariable(v, IntegerType), NullType)
+    case ReadCharStmt(v: String) =>
+      wrapValue[Type](lookupTypedVariable(v, CharacterType), NullType)
   }
 
   private def wrapError[A](
@@ -208,6 +183,12 @@ object TypeChecker {
         case Right(r) => Right((env, r))
       }
     })
+  }
+
+  private def wrapValue[A](wrapped: StateOrError[A], v: A): StateOrError[A] = {
+    for {
+      _ <- wrapped
+    } yield v
   }
 
   private def find[A](xs: List[A], p: A => Boolean): StateOrError[A] = {
@@ -248,6 +229,12 @@ object TypeChecker {
       }
     })
 
+  private def lookupTypedVariable(name: String, et: Type): StateOrError[Type] =
+    for {
+      t <- lookupVariable(name)
+      r <- enforceType(t, et)
+    } yield r
+
   private def lookupVariable(name: String): StateOrError[Type] =
     StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
       env.lookup(name) match {
@@ -275,11 +262,8 @@ object TypeChecker {
       rExpr: Expression,
       expTypes: List[Type],
       resType: Type
-  ): StateOrError[Type] = {
-    for {
-      _ <- checkOperationKeepType(lExpr, rExpr, expTypes)
-    } yield resType
-  }
+  ): StateOrError[Type] =
+    wrapValue(checkOperationKeepType(lExpr, rExpr, expTypes), resType)
 
   private def checkOperationKeepType(
       lExpr: Expression,
