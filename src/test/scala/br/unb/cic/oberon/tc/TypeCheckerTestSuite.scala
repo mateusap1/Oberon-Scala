@@ -431,63 +431,6 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
     )
   }
 
-  test("Check read stmts") {
-    assert(
-      TypeChecker
-        .checkStmt(ReadLongRealStmt("abc"))
-        .runA(
-          new Environment[Type](
-            locations = Map(
-              Location(0) -> RealType
-            ),
-            stack = Stack(
-              Map(
-                "abc" -> Location(0)
-              )
-            )
-          )
-        ) == Right(NullType)
-    )
-
-    assert(
-      TypeChecker
-        .checkStmt(ReadLongRealStmt("abc"))
-        .runA(
-          new Environment[Type](
-            locations = Map(
-              Location(0) -> RealType
-            ),
-            global = Map(
-              "abc" -> Location(0)
-            )
-          )
-        ) == Right(NullType)
-    )
-
-    assert(
-      TypeChecker
-        .checkStmt(ReadLongRealStmt("abc"))
-        .runA(new Environment[Type]())
-        .isLeft
-    )
-
-    assert(
-      TypeChecker
-        .checkStmt(ReadLongRealStmt("abc"))
-        .runA(
-          new Environment[Type](
-            locations = Map(
-              Location(0) -> IntegerType
-            ),
-            global = Map(
-              "abc" -> Location(0)
-            )
-          )
-        )
-        .isLeft
-    )
-  }
-
   test("Check assignment stmts") {
     // Can't test records currently
 
@@ -586,7 +529,131 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
               )
             )
           )
-        ).isLeft
+        )
+        .isLeft
+    )
+  }
+
+  test("Check sequence stmt") {
+    assert(
+      TypeChecker
+        .checkStmt(
+          SequenceStmt(
+            List(
+              AssignmentStmt(VarAssignment("abc"), RealValue(0.0)),
+              AssignmentStmt(VarAssignment("abc"), RealValue(1.0)),
+              AssignmentStmt(VarAssignment("bcd"), IntValue(0))
+            )
+          )
+        )
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> RealType,
+              Location(1) -> IntegerType
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0),
+                "bcd" -> Location(1)
+              )
+            )
+          )
+        ) == Right(NullType)
+    )
+
+    assert(
+      TypeChecker
+        .checkStmt(
+          SequenceStmt(
+            List(
+              AssignmentStmt(VarAssignment("abc"), RealValue(0.0)),
+              AssignmentStmt(VarAssignment("abc"), RealValue(1.0)),
+              AssignmentStmt(VarAssignment("bcd"), IntValue(0))
+            )
+          )
+        )
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> RealType,
+              Location(1) -> IntegerType
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0)
+              )
+            )
+          )
+        )
+        .isLeft
+    )
+  }
+
+  test("Check read stmts") {
+    assert(
+      TypeChecker
+        .checkStmt(ReadLongRealStmt("abc"))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> RealType
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0)
+              )
+            )
+          )
+        ) == Right(NullType)
+    )
+
+    assert(
+      TypeChecker
+        .checkStmt(ReadLongRealStmt("abc"))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> RealType
+            ),
+            global = Map(
+              "abc" -> Location(0)
+            )
+          )
+        ) == Right(NullType)
+    )
+
+    assert(
+      TypeChecker
+        .checkStmt(ReadLongRealStmt("abc"))
+        .runA(new Environment[Type]())
+        .isLeft
+    )
+
+    assert(
+      TypeChecker
+        .checkStmt(ReadLongRealStmt("abc"))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> IntegerType
+            ),
+            global = Map(
+              "abc" -> Location(0)
+            )
+          )
+        )
+        .isLeft
+    )
+  }
+
+  test("Check write stmt") {
+    val env = new Environment[Type]()
+
+    assert(
+      TypeChecker
+        .checkStmt(WriteStmt(IntValue(1)))
+        .runA(env) == Right(NullType)
     )
   }
 }

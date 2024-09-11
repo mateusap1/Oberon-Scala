@@ -160,6 +160,14 @@ object TypeChecker {
         _ <- enforceType(pt, et)
       } yield NullType
     }
+    case SequenceStmt(stmts: List[Statement]) => {
+      stmts.foldLeft[StateOrError[Type]](pure(NullType))((acc, stmt) =>
+        for {
+          _ <- acc
+          _ <- checkStmt(stmt)
+        } yield NullType
+      )
+    }
     case ReadLongRealStmt(v: String) =>
       wrapValue[Type](lookupTypedVariable(v, RealType), NullType)
     case ReadRealStmt(v: String) =>
@@ -172,6 +180,7 @@ object TypeChecker {
       wrapValue[Type](lookupTypedVariable(v, IntegerType), NullType)
     case ReadCharStmt(v: String) =>
       wrapValue[Type](lookupTypedVariable(v, CharacterType), NullType)
+    case WriteStmt(exp: Expression) => wrapValue(checkExpression(exp), NullType)
   }
 
   private def checkFieldAccess(
