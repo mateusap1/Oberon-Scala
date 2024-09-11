@@ -90,53 +90,9 @@ object TypeChecker {
           }
         } yield r
       }
-      case FieldAccessExpression(exp: Expression, attributeName: String) => {
-        for {
-          t <- checkExpression(exp)
-          r <- t match {
-            case RecordType(vars) =>
-              for {
-                v <- wrapError(
-                  find[VariableDeclaration](
-                    vars,
-                    (v => v.name == attributeName)
-                  ),
-                  s"FieldAccessError: Attribute ${attributeName} does not exist."
-                )
-              } yield v.variableType
-            case ReferenceToUserDefinedType(name) =>
-              for {
-                u <- lookupUserDefinedType(name)
-                vs <- u match {
-                  case UserDefinedType(_, RecordType(vars)) =>
-                    pure(vars)
-                  case _ =>
-                    assertError(
-                      "FieldAccessError: User type does not have attributes."
-                    )
-                }
-                v <- wrapError(
-                  find[VariableDeclaration](
-                    vs,
-                    (v => v.name == attributeName)
-                  ),
-                  s"FieldAccessError: Attribute ${attributeName} does not exist."
-                )
-              } yield v.variableType
-            case _ =>
-              assertError(
-                s"Tried to access field from type ${t}. Expected RecordType."
-              )
-          }
-        } yield r
-      }
-      case PointerAccessExpression(name: String) =>
-        StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
-          env.lookup(name) match {
-            case Some(PointerType(vt)) => Right((env, vt))
-            case _ => Left(s"Could not find pointer with name ${name}.")
-          }
-        })
+      case FieldAccessExpression(exp: Expression, attributeName: String) =>
+        checkFieldAccess(exp, attributeName)
+      case PointerAccessExpression(name: String) => lookupPointer(name)
       case LambdaExpression(args: List[FormalArg], exp: Expression) =>
         StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
           // We insert those argument into our environment and then evaluate the
@@ -159,6 +115,51 @@ object TypeChecker {
   }
 
   def checkStmt(stmt: Statement): StateOrError[Type] = stmt match {
+    case AssignmentStmt(VarAssignment(v: String), exp: Expression) => {
+      for {
+        tv <- lookupVariable(v)
+        te <- checkExpression(exp)
+        _ <- enforceType(te, tv)
+      } yield NullType
+    }
+    case AssignmentStmt(
+          ArrayAssignment(array: Expression, index: Expression),
+          exp: Expression
+        ) => {
+      for {
+        at <- checkExpression(array)
+        it <- checkExpression(index)
+        et <- checkExpression(exp)
+        _ <- enforceType(it, IntegerType)
+        _ <- at match {
+          case ArrayType(_, bt) => enforceType(et, bt)
+          case _ =>
+            assertError(
+              s"Tried to update array value for type ${at}. Expected ArrayType!"
+            )
+        }
+      } yield NullType
+    }
+    case AssignmentStmt(
+          RecordAssignment(record: Expression, field: String),
+          exp: Expression
+        ) => {
+      for {
+        rt <- checkFieldAccess(record, field)
+        et <- checkExpression(exp)
+        _ <- enforceType(rt, et)
+      } yield NullType
+    }
+    case AssignmentStmt(
+          PointerAssignment(name: String),
+          exp: Expression
+        ) => {
+      for {
+        pt <- lookupPointer(name)
+        et <- checkExpression(exp)
+        _ <- enforceType(pt, et)
+      } yield NullType
+    }
     case ReadLongRealStmt(v: String) =>
       wrapValue[Type](lookupTypedVariable(v, RealType), NullType)
     case ReadRealStmt(v: String) =>
@@ -171,6 +172,42 @@ object TypeChecker {
       wrapValue[Type](lookupTypedVariable(v, IntegerType), NullType)
     case ReadCharStmt(v: String) =>
       wrapValue[Type](lookupTypedVariable(v, CharacterType), NullType)
+  }
+
+  private def checkFieldAccess(
+      exp: Expression,
+      attributeName: String
+  ): StateOrError[Type] = {
+    // Not currently testable, no value has RecordType
+
+    for {
+      t <- checkExpression(exp)
+      r <- t match {
+        case RecordType(vars) =>
+          for {
+            v <- find[VariableDeclaration](
+              vars,
+              (v => v.name == attributeName)
+            )
+          } yield v.variableType
+        case ReferenceToUserDefinedType(name) =>
+          for {
+            u <- lookupUserDefinedType(name)
+            vs <- u match {
+              case UserDefinedType(_, RecordType(vars)) => pure(vars)
+              case _ => assertError("User defined type not with base record.")
+            }
+            v <- find[VariableDeclaration](
+              vs,
+              (v => v.name == attributeName)
+            )
+          } yield v.variableType
+        case _ =>
+          assertError(
+            s"Tried to access field from type ${t}. Expected RecordType."
+          )
+      }
+    } yield r
   }
 
   private def wrapError[A](
@@ -242,6 +279,15 @@ object TypeChecker {
         case None    => Left(s"Undefined variable ${name}.")
       }
     })
+
+  private def lookupPointer(name: String): StateOrError[Type] = {
+    StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
+      env.lookup(name) match {
+        case Some(PointerType(vt)) => Right((env, vt))
+        case _ => Left(s"Could not find pointer with name ${name}.")
+      }
+    })
+  }
 
   private def enforceType(at: Type, et: Type): StateOrError[Type] =
     enforceAnyType(at, List(et))

@@ -21,7 +21,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.mutable.{Map, Stack, ListBuffer}
 
-class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
+class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
 
   test("Check expression on atomic values") {
     val atomicValues = List(
@@ -485,6 +485,108 @@ class TypeCheckerTestSuite extends AbstractTestSuite with Oberon2ScalaParser {
           )
         )
         .isLeft
+    )
+  }
+
+  test("Check assignment stmts") {
+    // Can't test records currently
+
+    assert(
+      TypeChecker
+        .checkStmt(AssignmentStmt(VarAssignment("abc"), RealValue(0.0)))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> RealType
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0)
+              )
+            )
+          )
+        ) == Right(NullType)
+    )
+
+    assert(
+      TypeChecker
+        .checkStmt(AssignmentStmt(VarAssignment("abc"), IntValue(0)))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> RealType
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0)
+              )
+            )
+          )
+        )
+        .isLeft
+    )
+
+    assert(
+      TypeChecker
+        .checkStmt(
+          AssignmentStmt(
+            ArrayAssignment(
+              ArrayValue(ListBuffer(), ArrayType(3, RealType)),
+              IntValue(0)
+            ),
+            RealValue(0.0)
+          )
+        )
+        .runA(new Environment[Type]()) == Right(NullType)
+    )
+
+    assert(
+      TypeChecker
+        .checkStmt(
+          AssignmentStmt(
+            ArrayAssignment(
+              ArrayValue(ListBuffer(), ArrayType(3, CharacterType)),
+              IntValue(0)
+            ),
+            RealValue(0.0)
+          )
+        )
+        .runA(new Environment[Type]())
+        .isLeft
+    )
+
+    assert(
+      TypeChecker
+        .checkStmt(AssignmentStmt(PointerAssignment("abc"), RealValue(0.0)))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> PointerType(RealType)
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0)
+              )
+            )
+          )
+        ) == Right(NullType)
+    )
+
+    assert(
+      TypeChecker
+        .checkStmt(AssignmentStmt(PointerAssignment("abc"), RealValue(0.0)))
+        .runA(
+          new Environment[Type](
+            locations = Map(
+              Location(0) -> PointerType(IntegerType)
+            ),
+            stack = Stack(
+              Map(
+                "abc" -> Location(0)
+              )
+            )
+          )
+        ).isLeft
     )
   }
 }
