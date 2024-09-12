@@ -688,6 +688,231 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
     assert(TypeChecker.checkStmt(write02).runA(env).isLeft)
   }
 
+  test("Test assignment statement type checker") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 =
+      AssignmentStmt(VarAssignment("y"), IntValue(10)) // invalid stmt
+    val stmt03 = AssignmentStmt(
+      VarAssignment("x"),
+      AddExpression(IntValue(5), BoolValue(false))
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt03).runA(env).isLeft)
+  }
+
+  test("Test a sequence of statements type checker") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 =
+      AssignmentStmt(VarAssignment("y"), IntValue(10)) // invalid stmt
+    val stmt03 = AssignmentStmt(
+      VarAssignment("x"),
+      AddExpression(IntValue(5), BoolValue(false))
+    ) // invalid stmt
+    val stmt04 = WriteStmt(VarExpression("x"))
+    val stmt05 = WriteStmt(VarExpression("y"))
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt03).runA(env).isLeft)
+
+    val seq1 = SequenceStmt(List(stmt01, stmt04))
+    val seq2 = SequenceStmt(List(stmt01, stmt05))
+
+    assert(TypeChecker.checkStmt(seq1).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(seq2).runA(env).isLeft)
+  }
+
+  test("Test if-else statement type checker (with invalid condition)") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = IfElseStmt(IntValue(10), stmt01, None)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+  }
+
+  test("Test if-else statement type checker (with invalid then-stmt)") {
+    val env = new Environment[Type]()
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = IfElseStmt(BoolValue(true), stmt01, None)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+  }
+
+  test(
+    "Test if-else statement type checker (with invalid then-stmt and else-stmt)"
+  ) {
+    val env = new Environment[Type]()
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(10))
+    val stmt03 = IfElseStmt(BoolValue(true), stmt01, Some(stmt02))
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt03).runA(env).isLeft)
+  }
+
+  test("Test if-else statement type checker") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("y", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(10))
+    val stmt03 = IfElseStmt(BoolValue(true), stmt01, Some(stmt02))
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt03).runA(env) == Right(NullType))
+  }
+
+  test("Test if-else-if statment type checker (invalid condition 'if')") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("z", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(20))
+    val stmt02 = AssignmentStmt(VarAssignment("z"), IntValue(30))
+
+    val stmt03 = ElseIfStmt(BoolValue(true), stmt02)
+    val list1 = List(stmt03)
+
+    val stmt04 = CoreTransformer.reduceToCoreStatement(
+      IfElseIfStmt(IntValue(34), stmt01, list1, None)
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt04).runA(env).isLeft)
+  }
+
+  test("Test else-if statment type checker (invalid condition 'else-if')") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("z", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(40))
+    val stmt02 = AssignmentStmt(VarAssignment("z"), IntValue(100))
+
+    val stmt03 = ElseIfStmt(IntValue(70), stmt02)
+    val list1 = List(stmt03)
+
+    val stmt04 = CoreTransformer.reduceToCoreStatement(
+      IfElseIfStmt(BoolValue(true), stmt01, list1, None)
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt04).runA(env).isLeft)
+  }
+
+  test(
+    "Test else-if statment type checker (invalid condition list 'else-if')"
+  ) {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("z", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(40))
+    val stmt02 = AssignmentStmt(VarAssignment("z"), IntValue(100))
+
+    val stmt03 = ElseIfStmt(BoolValue(true), stmt02)
+    val stmt04 = ElseIfStmt(IntValue(73), stmt02)
+    val stmt05 = ElseIfStmt(IntValue(58), stmt01)
+    val stmt06 = ElseIfStmt(BoolValue(false), stmt01)
+    val list1 = List(stmt03, stmt04, stmt05, stmt06)
+
+    val stmt07 = CoreTransformer.reduceToCoreStatement(
+      IfElseIfStmt(BoolValue(true), stmt01, list1, None)
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt07).runA(env).isLeft)
+  }
+
+  test("Test else-if statment type checker (invalid then-stmt 'else-if')") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(40))
+    val stmt02 = AssignmentStmt(VarAssignment("z"), IntValue(100))
+
+    val stmt03 = ElseIfStmt(BoolValue(true), stmt02)
+    val list1 = List(stmt03)
+
+    val stmt04 = CoreTransformer.reduceToCoreStatement(
+      IfElseIfStmt(BoolValue(true), stmt01, list1, None)
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt04).runA(env).isLeft)
+  }
+
+  test("Test if-else-if statment type checker (invalid else-stmt)") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("z", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(40))
+    val stmt02 = AssignmentStmt(VarAssignment("z"), IntValue(100))
+    val stmt03 = AssignmentStmt(VarAssignment("w"), IntValue(20))
+
+    val stmt04 = ElseIfStmt(BoolValue(true), stmt02)
+    val list1 = List(stmt04)
+
+    val stmt05 = CoreTransformer.reduceToCoreStatement(
+      IfElseIfStmt(BoolValue(true), stmt01, list1, Some(stmt03))
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt03).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt05).runA(env).isLeft)
+  }
+
+  test(
+    "Test if-else-if statment type checker (invalid then-stmt, 'else-if' then-stmt, 'else-if' invalid condition and else-stmt)"
+  ) {
+    val env = new Environment[Type]()
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(40))
+    val stmt02 = AssignmentStmt(VarAssignment("z"), IntValue(100))
+    val stmt03 = AssignmentStmt(VarAssignment("w"), IntValue(20))
+
+    val stmt04 = ElseIfStmt(IntValue(56), stmt02)
+    val stmt05 = ElseIfStmt(IntValue(79), stmt01)
+    val stmt06 = ElseIfStmt(BoolValue(true), stmt02)
+    val list1 = List(stmt04, stmt05, stmt06)
+
+    val stmt07 = CoreTransformer.reduceToCoreStatement(
+      IfElseIfStmt(BoolValue(true), stmt01, list1, Some(stmt03))
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt03).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt07).runA(env).isLeft)
+  }
+
+  test("Test if-else-if statment type checker") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType).setGlobalVariable("y", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(15))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(5))
+
+    val stmt03 = ElseIfStmt(BoolValue(true), stmt02)
+    val list1 = List(stmt03)
+
+    val stmt04 = CoreTransformer.reduceToCoreStatement(
+      IfElseIfStmt(BoolValue(true), stmt01, list1, None)
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt04).runA(env) == Right(NullType))
+  }
+
+  // Was here
+
   test("Test EAssignment") {
     val env = new Environment[Type]()
       .addUserDefinedType(
