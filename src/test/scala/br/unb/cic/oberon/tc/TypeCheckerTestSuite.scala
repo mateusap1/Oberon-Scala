@@ -999,7 +999,7 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
     assert(TypeChecker.checkStmt(stmt03).runA(env) == Right(NullType))
   }
 
-  // Was here
+  // Parei no switch case
 
   test("Test EAssignment") {
     val env = new Environment[Type]()

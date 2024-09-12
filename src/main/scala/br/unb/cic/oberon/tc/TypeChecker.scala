@@ -160,6 +160,8 @@ object TypeChecker {
         } yield NullType
       )
     }
+    case NewStmt(n: String) => lookupPointer(n)
+    case ReturnStmt(exp: Expression) => wrapValue[Type](checkExpression(exp), NullType)
     case ReadLongRealStmt(v: String) =>
       wrapValue[Type](lookupTypedVariable(v, RealType), NullType)
     case ReadRealStmt(v: String) =>
