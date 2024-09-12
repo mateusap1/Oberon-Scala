@@ -189,20 +189,39 @@ object TypeChecker {
       } yield t
     }
     case IfElseStmt(
-        condition: Expression,
-        thenStmt: Statement,
-        elseStmt: Option[Statement]
-    ) => {
+          condition: Expression,
+          thenStmt: Statement,
+          elseStmt: Option[Statement]
+        ) => {
       for {
         t <- checkExpression(condition)
         _ <- enforceType(t, BooleanType)
-        env <- getEnvironment()
-        _ <- checkStmt(thenStmt)
+        _ <- wrapIgnoreEnvironment(checkStmt(thenStmt))
         _ <- elseStmt match {
-          case Some(stmt) => checkStmt(stmt)
-          case None => pure(NullType)
+          case Some(stmt) => wrapIgnoreEnvironment(checkStmt(stmt))
+          case None       => pure(NullType)
         }
-        _ <- updateEnvironment(env)
+      } yield NullType
+    }
+    case WhileStmt(condition: Expression, stmt: Statement) => {
+      for {
+        t <- checkExpression(condition)
+        _ <- enforceType(t, BooleanType)
+        _ <- wrapIgnoreEnvironment(checkStmt(stmt))
+      } yield NullType
+    }
+    case ForEachStmt(n: String, exp: Expression, stmt: Statement) => {
+      for {
+        et <- checkExpression(exp)
+        vt <- lookupVariable(n)
+        _ <- et match {
+          case ArrayType(_, bt) => enforceType(vt, bt)
+          case t =>
+            assertError(
+              s"ForEach statement required ArrayType, but received ${t}."
+            )
+        }
+        _ <- wrapIgnoreEnvironment(checkStmt(stmt))
       } yield NullType
     }
     case _ => throw new RuntimeException("Statement not part of Oberon-Core")
@@ -256,6 +275,16 @@ object TypeChecker {
     StateT[ErrorOr, Environment[Type], Environment[Type]](_ =>
       Right((env, env))
     )
+  }
+
+  private def wrapIgnoreEnvironment[A](
+      wrapped: StateOrError[A]
+  ): StateOrError[A] = {
+    for {
+      env <- getEnvironment()
+      r <- wrapped
+      _ <- updateEnvironment(env)
+    } yield r
   }
 
   private def addLocalVariables(
