@@ -202,6 +202,7 @@ object TypeChecker {
           case Some(stmt) => checkStmt(stmt)
           case None => pure(NullType)
         }
+        _ <- updateEnvironment(env)
       } yield NullType
     }
     case _ => throw new RuntimeException("Statement not part of Oberon-Core")
