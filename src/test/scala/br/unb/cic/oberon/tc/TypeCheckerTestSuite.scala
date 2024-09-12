@@ -657,4 +657,211 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
     )
   }
 
+  test("Test EAssignment") {
+    val env = new Environment[Type]()
+      .addUserDefinedType(
+        UserDefinedType(
+          "customType",
+          RecordType(List(VariableDeclaration("x1", RealType)))
+        )
+      )
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("b", PointerType(BooleanType))
+      .setGlobalVariable("arr", ArrayType(3, CharacterType))
+      .setGlobalVariable(
+        "rec",
+        RecordType(List(VariableDeclaration("x", StringType)))
+      )
+      .setGlobalVariable(
+        "userDefType",
+        ReferenceToUserDefinedType("customType")
+      )
+
+    val stmt01 = new AssignmentStmt(VarAssignment("x"), IntValue(0))
+    val stmt02 = new AssignmentStmt(PointerAssignment("b"), BoolValue(false))
+    val stmt03 = new AssignmentStmt(
+      ArrayAssignment(VarExpression("arr"), IntValue(0)),
+      CharValue('a')
+    )
+    val stmt04 = new AssignmentStmt(
+      RecordAssignment(VarExpression("rec"), "x"),
+      StringValue("teste")
+    )
+    val stmt05 = new AssignmentStmt(
+      RecordAssignment(VarExpression("userDefType"), "x1"),
+      RealValue(6.9)
+    )
+
+    val stmts = SequenceStmt(List(stmt01, stmt02, stmt03, stmt04))
+
+    assert(TypeChecker.checkStmt(stmts).runA(env) == Right(NullType))
+  }
+
+  test("Test EAssignment, PointerAssignment, missing variable") {
+    val env = new Environment[Type]()
+    val stmt = AssignmentStmt(PointerAssignment("b"), BoolValue(false))
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test EAssignment, PointerAssignment, left side not PointerType") {
+    val env = new Environment[Type]().setGlobalVariable("b", IntegerType)
+    val stmt = AssignmentStmt(PointerAssignment("b"), BoolValue(false))
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test EAssignment, PointerAssignment, invalid left side Type") {
+    val env =
+      new Environment[Type]().setGlobalVariable("b", PointerType(UndefinedType))
+    val stmt = AssignmentStmt(PointerAssignment("b"), BoolValue(false))
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test EAssignment, PointerAssignment, wrong right side Type") {
+    val env =
+      new Environment[Type]().setGlobalVariable("b", PointerType(IntegerType))
+    val stmt = AssignmentStmt(PointerAssignment("b"), BoolValue(false))
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test EAssignment, ArrayAssignment, wrong array type") {
+    val env = new Environment[Type]().setGlobalVariable("arr", IntegerType)
+    val stmt = AssignmentStmt(
+      ArrayAssignment(VarExpression("arr"), IntValue(0)),
+      CharValue('a')
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test EAssignment, ArrayAssignment, wrong index type") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("arr", ArrayType(3, CharacterType))
+    val stmt = AssignmentStmt(
+      ArrayAssignment(VarExpression("arr"), BoolValue(true)),
+      CharValue('a')
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test EAssignment, ArrayAssignment, missing array type") {
+    val env = new Environment[Type]()
+    val stmt = AssignmentStmt(
+      ArrayAssignment(VarExpression("arr"), IntValue(0)),
+      CharValue('a')
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test EAssignment, ArrayAssignment, missing index type") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("arr", ArrayType(3, CharacterType))
+    val stmt = AssignmentStmt(
+      ArrayAssignment(VarExpression("arr"), VarExpression("i")),
+      CharValue('a')
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test EAssignment, ArrayAssignment, wrong array element type") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("arr", ArrayType(3, IntegerType))
+    val stmt = AssignmentStmt(
+      ArrayAssignment(VarExpression("arr"), IntValue(0)),
+      CharValue('a')
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test EAssignment, RecordAssignment(RecordType), missing attribute") {
+    val env = new Environment[Type]().setGlobalVariable(
+      "rec",
+      RecordType(List(VariableDeclaration("x", StringType)))
+    )
+    val stmt = AssignmentStmt(
+      RecordAssignment(VarExpression("rec"), "404"),
+      StringValue("teste")
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test EAssignment, RecordAssignment(RecordType), wrong attribute type") {
+    val env = new Environment[Type]().setGlobalVariable(
+      "rec",
+      RecordType(List(VariableDeclaration("x", StringType)))
+    )
+    val stmt = AssignmentStmt(
+      RecordAssignment(VarExpression("rec"), "x"),
+      IntValue(8)
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test(
+    "Test EAssignment, RecordAssignment(ReferenceToUserDefinedType), missing custom type"
+  ) {
+    val env = new Environment[Type]().setGlobalVariable(
+      "userDefType",
+      ReferenceToUserDefinedType("customType")
+    )
+    val stmt = AssignmentStmt(
+      RecordAssignment(VarExpression("userDefType"), "x"),
+      RealValue(3.0)
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test(
+    "Test EAssignment, RecordAssignment(ReferenceToUserDefinedType), missing attribute type"
+  ) {
+    val env = new Environment[Type]()
+      .addUserDefinedType(
+        UserDefinedType(
+          "customType",
+          RecordType(List(VariableDeclaration("x1", RealType)))
+        )
+      )
+      .setGlobalVariable(
+        "userDefType",
+        ReferenceToUserDefinedType("customType")
+      )
+    val stmt = AssignmentStmt(
+      RecordAssignment(VarExpression("userDefType"), "404"),
+      RealValue(3.0)
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test(
+    "Test EAssignment, RecordAssignment(ReferenceToUserDefinedType), wrong attribute type"
+  ) {
+    val env = new Environment[Type]()
+      .addUserDefinedType(
+        UserDefinedType(
+          "customType",
+          RecordType(List(VariableDeclaration("x1", RealType)))
+        )
+      )
+      .setGlobalVariable(
+        "userDefType",
+        ReferenceToUserDefinedType("customType")
+      )
+    val stmt = AssignmentStmt(
+      RecordAssignment(VarExpression("userDefType"), "x1"),
+      IntValue(3)
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
 }
