@@ -895,7 +895,9 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
   }
 
   test("Test if-else-if statment type checker") {
-    val env = new Environment[Type]().setGlobalVariable("x", IntegerType).setGlobalVariable("y", IntegerType)
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("y", IntegerType)
     val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(15))
     val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(5))
 
@@ -936,6 +938,65 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
 
     assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
     assert(TypeChecker.checkStmt(stmt02).runA(env) == Right(NullType))
+  }
+
+  test("Test for statement type checker (with invalid init)") {
+    val env = new Environment[Type]().setGlobalVariable("y", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(10))
+    val stmt03 = CoreTransformer.reduceToCoreStatement(
+      ForStmt(stmt01, BoolValue(true), stmt02)
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt02).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt03).runA(env).isLeft)
+  }
+
+  test("Test for statement type checker (with invalid condition)") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("y", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(10))
+
+    val stmt03 = CoreTransformer.reduceToCoreStatement(
+      ForStmt(stmt01, IntValue(10), stmt02)
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt03).runA(env).isLeft)
+  }
+
+  test("Test for statement type checker (with invalid stmt)") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(100))
+
+    val stmt03 = CoreTransformer.reduceToCoreStatement(
+      ForStmt(stmt01, BoolValue(true), stmt02)
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt03).runA(env).isLeft)
+  }
+
+  test("Test for statement type checker") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("y", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(0))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(10))
+
+    val stmt03 = CoreTransformer.reduceToCoreStatement(
+      ForStmt(stmt01, BoolValue(true), stmt02)
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt03).runA(env) == Right(NullType))
   }
 
   // Was here

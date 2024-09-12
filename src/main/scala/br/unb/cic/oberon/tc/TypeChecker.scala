@@ -174,9 +174,6 @@ object TypeChecker {
       wrapValue[Type](lookupTypedVariable(v, CharacterType), NullType)
     case WriteStmt(exp: Expression) => wrapValue(checkExpression(exp), NullType)
     case ProcedureCallStmt(name: String, args: List[Expression]) => {
-      // Should we not add the local variables before executing the body
-      // of this statement?
-
       for {
         p <- lookupProcedure(name)
         ts <- checkExpressions(args)
@@ -185,8 +182,7 @@ object TypeChecker {
           else {
             assertError(s"Wrong type for argument of procedure ${name}.")
           }
-        t <- checkStmt(p.stmt)
-      } yield t
+      } yield NullType
     }
     case IfElseStmt(
           condition: Expression,
