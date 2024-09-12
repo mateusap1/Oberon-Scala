@@ -911,6 +911,33 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
     assert(TypeChecker.checkStmt(stmt04).runA(env) == Right(NullType))
   }
 
+  test("Test while statement type checker (with invalid condition)") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = WhileStmt(IntValue(10), stmt01)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+  }
+
+  test("Test while statement type checker (with invalid stmt)") {
+    val env = (new Environment[Type]())
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = WhileStmt(BoolValue(true), stmt01)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+  }
+
+  test("Test while statement type checker") {
+    val env = (new Environment[Type]()).setGlobalVariable("x", IntegerType)
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = WhileStmt(BoolValue(true), stmt01)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(stmt02).runA(env) == Right(NullType))
+  }
+
   // Was here
 
   test("Test EAssignment") {
