@@ -56,7 +56,7 @@ object TypeChecker {
           p <- lookupProcedure(name)
           ts <- checkExpressions(args)
           _ <-
-            if (p.args.map[Type](fa => fa.argumentType) == ts) { pure(()) }
+            if (p.args.map(fa => fa.argumentType) == ts) { pure(()) }
             else {
               assertError(s"Wrong type for argument of function ${name}.")
             }
@@ -96,12 +96,6 @@ object TypeChecker {
       case LambdaExpression(args: List[FormalArg], exp: Expression) => {
         for {
           _ <- addLocalVariables(args.map(arg => (arg.name, arg.argumentType)))
-          // _ <-  args.foldRight[StateOrError[Unit]](pure(()))((arg, acc) => {
-          //   for {
-          //     _ <- acc
-          //     _ <- addLocalVariable(arg.name, arg.argumentType)
-          //   } yield ()
-          // })
           t <- checkExpression(exp)
         } yield t
       }
@@ -184,11 +178,11 @@ object TypeChecker {
         p <- lookupProcedure(name)
         ts <- checkExpressions(args)
         _ <-
-          if (p.args.map[Type](fa => fa.argumentType) == ts) { pure(()) }
+          if (p.args.map(fa => fa.argumentType) == ts) { pure(()) }
           else {
             assertError(s"Wrong type for argument of procedure ${name}.")
           }
-
+        _ <- addLocalVariables(p.args.map(arg => (arg.name, arg.argumentType)))
         t <- checkStmt(p.stmt)
       } yield t
     }
