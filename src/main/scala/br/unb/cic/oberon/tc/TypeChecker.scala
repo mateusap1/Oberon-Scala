@@ -93,20 +93,22 @@ object TypeChecker {
       case FieldAccessExpression(exp: Expression, attributeName: String) =>
         checkFieldAccess(exp, attributeName)
       case PointerAccessExpression(name: String) => lookupPointer(name)
-      case LambdaExpression(args: List[FormalArg], exp: Expression) =>
-        StateT[ErrorOr, Environment[Type], Type]((env: Environment[Type]) => {
-          // We insert those argument into our environment and then evaluate the
-          // expression
-          val nEnv = args.foldRight[Environment[Type]](env)(
-            (arg: FormalArg, acc: Environment[Type]) =>
-              acc.setLocalVariable(arg.name, arg.argumentType)
+      case LambdaExpression(args: List[FormalArg], exp: Expression) => {
+        for {
+          env <- getEnvironment()
+          _ <- args.foldRight[StateOrError[Environment[Type]]](pure(env))(
+            (arg, acc) => {
+              for {
+                env <- acc
+                nEnv <- updateEnvironment(
+                  env.setLocalVariable(arg.name, arg.argumentType)
+                )
+              } yield nEnv
+            }
           )
-
-          checkExpression(exp).runA(nEnv) match {
-            case Left(err) => Left(err)
-            case Right(t)  => Right((env, t))
-          }
-        })
+          t <- checkExpression(exp)
+        } yield t
+      }
     }
   }
 
@@ -217,6 +219,20 @@ object TypeChecker {
           )
       }
     } yield r
+  }
+
+  private def getEnvironment(): StateOrError[Environment[Type]] = {
+    StateT[ErrorOr, Environment[Type], Environment[Type]](
+      (env: Environment[Type]) => Right(env, env)
+    )
+  }
+
+  private def updateEnvironment(
+      env: Environment[Type]
+  ): StateOrError[Environment[Type]] = {
+    StateT[ErrorOr, Environment[Type], Environment[Type]](_ =>
+      Right((env, env))
+    )
   }
 
   private def wrapError[A](
