@@ -657,6 +657,37 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
     )
   }
 
+  // ------
+
+  test("Test read int statement type checker") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("y", IntegerType)
+    val read01 = ReadIntStmt("x")
+    val read02 = ReadIntStmt("y")
+
+    assert(TypeChecker.checkStmt(read01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(read02).runA(env) == Right(NullType))
+  }
+
+  test("Test read real statement type checker") {
+    val env = new Environment[Type]().setGlobalVariable("x", RealType)
+    val read01 = ReadRealStmt("x")
+    val read02 = ReadRealStmt("y")
+
+    assert(TypeChecker.checkStmt(read01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(read02).runA(env).isLeft)
+  }
+
+  test("Test write statement type checker") {
+    val env = new Environment[Type]()
+    val write01 = WriteStmt(IntValue(5))
+    val write02 = WriteStmt(AddExpression(IntValue(5), BoolValue(false)))
+
+    assert(TypeChecker.checkStmt(write01).runA(env) == Right(NullType))
+    assert(TypeChecker.checkStmt(write02).runA(env).isLeft)
+  }
+
   test("Test EAssignment") {
     val env = new Environment[Type]()
       .addUserDefinedType(
