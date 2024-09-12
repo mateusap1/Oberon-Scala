@@ -102,8 +102,31 @@ object TypeChecker {
     }
   }
 
-  def checkModule(module: OberonModule): StateOrError[Type] = {
-    assertError("Not Implemented Yet")
+  def checkModule(module: OberonModule): StateOrError[Unit] = {
+    for {
+      _ <- module.constants.foldLeft[StateOrError[Unit]](pure(()))((acc, c) =>
+        for {
+          _ <- acc
+          t <- checkExpression(c.exp)
+          _ <- addGlobalVariable(c.name, t)
+        } yield ()
+      )
+      _ <- addGlobalVariables(
+        module.variables.map(v => (v.name, v.variableType))
+      )
+      _ <- addProcedures(module.procedures)
+      _ <- addUserDefinedTypes(module.userTypes)
+      _ <- module.procedures.foldLeft[StateOrError[Unit]](pure(()))((acc, p) =>
+        for {
+          _ <- acc
+          _ <- checkProcedure(p)
+        } yield ()
+      )
+      _ <- module.stmt match {
+        case Some(stmt) => checkStmt(stmt)
+        case None       => pure(()) // Should this be an error?
+      }
+    } yield ()
   }
 
   def checkStmt(stmt: Statement): StateOrError[Type] = stmt match {
@@ -161,7 +184,8 @@ object TypeChecker {
       )
     }
     case NewStmt(n: String) => lookupPointer(n)
-    case ReturnStmt(exp: Expression) => wrapValue[Type](checkExpression(exp), NullType)
+    case ReturnStmt(exp: Expression) =>
+      wrapValue[Type](checkExpression(exp), NullType)
     case ReadLongRealStmt(v: String) =>
       wrapValue[Type](lookupTypedVariable(v, RealType), NullType)
     case ReadRealStmt(v: String) =>
@@ -223,7 +247,24 @@ object TypeChecker {
       } yield NullType
     }
     case ExitStmt() => pure(NullType)
-    case _ => throw new RuntimeException("Statement not part of Oberon-Core")
+    case _          => assertError("Statement not part of Oberon-Core")
+  }
+
+  private def checkProcedure(p: Procedure): StateOrError[Unit] = {
+    for {
+      env <- getEnvironment()
+      _ <- updateEnvironment(env.push())
+      _ <- addLocalVariables(p.args.map(arg => (arg.name, arg.argumentType)))
+      _ <- p.constants.foldLeft[StateOrError[Unit]](pure(()))((acc, c) =>
+        for {
+          _ <- acc
+          t <- checkExpression(c.exp)
+          _ <- addGlobalVariable(c.name, t)
+        } yield ()
+      )
+      _ <- addLocalVariables(p.variables.map(v => (v.name, v.variableType)))
+      _ <- checkStmt(p.stmt)
+    } yield ()
   }
 
   private def checkFieldAccess(
@@ -286,16 +327,118 @@ object TypeChecker {
     } yield r
   }
 
-  private def addLocalVariables(
-      args: List[(String, Type)]
+  // TODO: Usar esses para abstrair o restante
+  private def addManyToEnv[A](
+      f: (A, Environment[Type]) => Environment[Type]
+  )(xs: List[A]): StateOrError[Environment[Type]] = {
+    for {
+      env <- getEnvironment()
+      nEnv <- xs.foldRight[StateOrError[Environment[Type]]](pure(env))(
+        (x, acc) => {
+          for {
+            _ <- acc
+            nEnv <- addToEnv(f)(x)
+          } yield nEnv
+        }
+      )
+    } yield nEnv
+  }
+
+  private def addToEnv[A](
+      f: (A, Environment[Type]) => Environment[Type]
+  )(x: A): StateOrError[Environment[Type]] = {
+    for {
+      env <- getEnvironment()
+      nEnv <- updateEnvironment(f(x, env))
+    } yield nEnv
+  }
+
+  private def addUserDefinedTypes(
+      us: List[UserDefinedType]
   ): StateOrError[Environment[Type]] = {
     for {
       env <- getEnvironment()
-      nEnv <- args.foldRight[StateOrError[Environment[Type]]](pure(env))(
-        (arg, acc) => {
+      nEnv <- us.foldRight[StateOrError[Environment[Type]]](pure(env))(
+        (u, acc) => {
           for {
             _ <- acc
-            nEnv <- addLocalVariable(arg._1, arg._2)
+            nEnv <- addUserDefinedType(u)
+          } yield nEnv
+        }
+      )
+    } yield nEnv
+  }
+
+  private def addUserDefinedType(
+      u: UserDefinedType
+  ): StateOrError[Environment[Type]] = {
+    for {
+      env <- getEnvironment()
+      nEnv <- updateEnvironment(env.addUserDefinedType(u))
+    } yield nEnv
+  }
+
+  private def addProcedures(
+      ps: List[Procedure]
+  ): StateOrError[Environment[Type]] = {
+    for {
+      env <- getEnvironment()
+      nEnv <- ps.foldLeft[StateOrError[Environment[Type]]](pure(env))(
+        (acc, p) => {
+          for {
+            _ <- acc
+            nEnv <- addProcedure(p)
+          } yield nEnv
+        }
+      )
+    } yield nEnv
+  }
+
+  private def addProcedure(p: Procedure): StateOrError[Environment[Type]] = {
+    for {
+      env <- getEnvironment()
+      nEnv <- updateEnvironment(env.declareProcedure(p))
+    } yield nEnv
+  }
+
+  private def addGlobalVariables(
+      vars: List[(String, Type)]
+  ): StateOrError[Environment[Type]] = {
+    for {
+      env <- getEnvironment()
+      nEnv <- vars.foldLeft[StateOrError[Environment[Type]]](pure(env))(
+        (acc, v) => {
+          for {
+            _ <- acc
+            nEnv <- addGlobalVariable(v._1, v._2)
+          } yield nEnv
+        }
+      )
+    } yield nEnv
+  }
+
+  private def addGlobalVariable(
+      name: String,
+      varType: Type
+  ): StateOrError[Environment[Type]] = {
+    for {
+      env <- getEnvironment()
+      nEnv <- updateEnvironment(
+        env.setGlobalVariable(name, varType)
+      )
+    } yield nEnv
+  }
+
+  private def addLocalVariables(
+      vars: List[(String, Type)]
+  ): StateOrError[Environment[Type]] = {
+    for {
+      env <- getEnvironment()
+      nEnv <- vars.foldLeft[StateOrError[Environment[Type]]](pure(env))(
+        (acc, v) => {
+          for {
+            _ <- acc
+            nEnv <- addLocalVariable(v._1, v._2)
           } yield nEnv
         }
       )
