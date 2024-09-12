@@ -656,4 +656,31 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
         .runA(env) == Right(NullType)
     )
   }
+
+  // test("Check procedure stmt") {
+  //   val env = new Environment[Type]()
+
+  //   assert(
+  //     TypeChecker
+  //       .checkStmt(
+  //         ProcedureCallStmt("abc", List(IntegerValue(1)))
+  //       )
+  //       .runA(env) == Right(BooleanType)
+  //   )
+
+  //   assert(
+  //     TypeChecker
+  //       .checkExpression(
+  //         LambdaExpression(
+  //           List(
+  //             ParameterByReference("x", IntegerType),
+  //             ParameterByReference("y", IntegerType)
+  //           ),
+  //           GTExpression(VarExpression("x"), VarExpression("z"))
+  //         )
+  //       )
+  //       .runA(env)
+  //       .isLeft
+  //   )
+  // }
 }

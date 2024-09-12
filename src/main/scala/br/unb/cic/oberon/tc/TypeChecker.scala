@@ -95,17 +95,13 @@ object TypeChecker {
       case PointerAccessExpression(name: String) => lookupPointer(name)
       case LambdaExpression(args: List[FormalArg], exp: Expression) => {
         for {
-          env <- getEnvironment()
-          _ <- args.foldRight[StateOrError[Environment[Type]]](pure(env))(
-            (arg, acc) => {
-              for {
-                env <- acc
-                nEnv <- updateEnvironment(
-                  env.setLocalVariable(arg.name, arg.argumentType)
-                )
-              } yield nEnv
-            }
-          )
+          _ <- addLocalVariables(args.map(arg => (arg.name, arg.argumentType)))
+          // _ <-  args.foldRight[StateOrError[Unit]](pure(()))((arg, acc) => {
+          //   for {
+          //     _ <- acc
+          //     _ <- addLocalVariable(arg.name, arg.argumentType)
+          //   } yield ()
+          // })
           t <- checkExpression(exp)
         } yield t
       }
@@ -183,6 +179,19 @@ object TypeChecker {
     case ReadCharStmt(v: String) =>
       wrapValue[Type](lookupTypedVariable(v, CharacterType), NullType)
     case WriteStmt(exp: Expression) => wrapValue(checkExpression(exp), NullType)
+    case ProcedureCallStmt(name: String, args: List[Expression]) => {
+      for {
+        p <- lookupProcedure(name)
+        ts <- checkExpressions(args)
+        _ <-
+          if (p.args.map[Type](fa => fa.argumentType) == ts) { pure(()) }
+          else {
+            assertError(s"Wrong type for argument of procedure ${name}.")
+          }
+
+        t <- checkStmt(p.stmt)
+      } yield t
+    }
   }
 
   private def checkFieldAccess(
@@ -233,6 +242,34 @@ object TypeChecker {
     StateT[ErrorOr, Environment[Type], Environment[Type]](_ =>
       Right((env, env))
     )
+  }
+
+  private def addLocalVariables(
+      args: List[(String, Type)]
+  ): StateOrError[Environment[Type]] = {
+    for {
+      env <- getEnvironment()
+      nEnv <- args.foldRight[StateOrError[Environment[Type]]](pure(env))(
+        (arg, acc) => {
+          for {
+            _ <- acc
+            nEnv <- addLocalVariable(arg._1, arg._2)
+          } yield nEnv
+        }
+      )
+    } yield nEnv
+  }
+
+  private def addLocalVariable(
+      name: String,
+      varType: Type
+  ): StateOrError[Environment[Type]] = {
+    for {
+      env <- getEnvironment()
+      nEnv <- updateEnvironment(
+        env.setLocalVariable(name, varType)
+      )
+    } yield nEnv
   }
 
   private def wrapError[A](
