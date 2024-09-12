@@ -174,6 +174,9 @@ object TypeChecker {
       wrapValue[Type](lookupTypedVariable(v, CharacterType), NullType)
     case WriteStmt(exp: Expression) => wrapValue(checkExpression(exp), NullType)
     case ProcedureCallStmt(name: String, args: List[Expression]) => {
+      // Should we not add the local variables before executing the body
+      // of this statement?
+
       for {
         p <- lookupProcedure(name)
         ts <- checkExpressions(args)
@@ -182,10 +185,26 @@ object TypeChecker {
           else {
             assertError(s"Wrong type for argument of procedure ${name}.")
           }
-        _ <- addLocalVariables(p.args.map(arg => (arg.name, arg.argumentType)))
         t <- checkStmt(p.stmt)
       } yield t
     }
+    case IfElseStmt(
+        condition: Expression,
+        thenStmt: Statement,
+        elseStmt: Option[Statement]
+    ) => {
+      for {
+        t <- checkExpression(condition)
+        _ <- enforceType(t, BooleanType)
+        env <- getEnvironment()
+        _ <- checkStmt(thenStmt)
+        _ <- elseStmt match {
+          case Some(stmt) => checkStmt(stmt)
+          case None => pure(NullType)
+        }
+      } yield NullType
+    }
+    case _ => throw new RuntimeException("Statement not part of Oberon-Core")
   }
 
   private def checkFieldAccess(
