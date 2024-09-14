@@ -431,6 +431,148 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
     )
   }
 
+  // Start
+
+  test("Test expression type on simple values") {
+    val env = new Environment[Type]()
+    val val10 = IntValue(10)
+    val bTrue = BoolValue(true)
+    val bFalse = BoolValue(false)
+
+    assert(
+      TypeChecker
+        .checkExpression(val10)
+        .runA(env) == Right(IntegerType)
+    )
+    assert(
+      TypeChecker
+        .checkExpression(bTrue)
+        .runA(env) == Right(BooleanType)
+    )
+    assert(
+      TypeChecker
+        .checkExpression(bFalse)
+        .runA(env) == Right(BooleanType)
+    )
+  }
+
+  test("Test expression type on add expressions") {
+    val env = new Environment[Type]()
+    val val10 = IntValue(10)
+    val val20 = IntValue(20)
+    val add01 = AddExpression(val10, val20)
+    val add02 = AddExpression(val10, add01)
+    val add03 = AddExpression(add01, add02)
+
+    assert(TypeChecker.checkExpression(add01).runA(env) == Right(IntegerType))
+    assert(TypeChecker.checkExpression(add02).runA(env) == Right(IntegerType))
+    assert(TypeChecker.checkExpression(add03).runA(env) == Right(IntegerType))
+  }
+
+  test("Test expression type on sub expressions") {
+    val env = new Environment[Type]()
+    val val10 = IntValue(10)
+    val val20 = IntValue(20)
+    val sub01 = SubExpression(val10, val20)
+    val sub02 = SubExpression(val10, sub01)
+    val sub03 = SubExpression(sub01, sub02)
+
+    assert(
+      TypeChecker
+        .checkExpression(sub01)
+        .runA(env) == Right(IntegerType)
+    )
+    assert(
+      TypeChecker
+        .checkExpression(sub02)
+        .runA(env) == Right(IntegerType)
+    )
+    assert(
+      TypeChecker
+        .checkExpression(sub03)
+        .runA(env) == Right(IntegerType)
+    )
+  }
+
+  test("Test expression type on div expressions") {
+    val env = new Environment[Type]()
+    val val10 = IntValue(10)
+    val val20 = IntValue(20)
+    val sub01 = DivExpression(val10, val20)
+    val sub02 = DivExpression(val10, sub01)
+    val sub03 = DivExpression(sub01, sub02)
+
+    assert(
+      TypeChecker
+        .checkExpression(sub01)
+        .runA(env) == Right(IntegerType)
+    )
+    assert(
+      TypeChecker
+        .checkExpression(sub02)
+        .runA(env) == Right(IntegerType)
+    )
+    assert(
+      TypeChecker
+        .checkExpression(sub03)
+        .runA(env) == Right(IntegerType)
+    )
+  }
+
+  test("Test expression type on mult expressions") {
+    val env = new Environment[Type]()
+    val val10 = IntValue(10)
+    val val20 = IntValue(20)
+    val mult01 = AddExpression(val10, val20)
+    val mult02 = AddExpression(val10, mult01)
+    val mult03 = AddExpression(mult01, mult02)
+
+    assert(
+      TypeChecker
+        .checkExpression(mult01)
+        .runA(env) == Right(IntegerType)
+    )
+    assert(
+      TypeChecker
+        .checkExpression(mult02)
+        .runA(env) == Right(IntegerType)
+    )
+    assert(
+      TypeChecker
+        .checkExpression(mult03)
+        .runA(env) == Right(IntegerType)
+    )
+  }
+
+  test("Test expression type on eq expressions") {
+    val env = new Environment[Type]()
+    val val10 = IntValue(10)
+    val val20 = IntValue(20)
+    val eq01 = EQExpression(val10, val20)
+
+    assert(
+      TypeChecker
+        .checkExpression(eq01)
+        .runA(env) == Right(BooleanType)
+    )
+  }
+
+  test("Test expression add with boolean values") {
+    val env = new Environment[Type]()
+    val val10 = IntValue(10)
+    val valTrue = BoolValue(true)
+    val invalidAdd = AddExpression(val10, valTrue)
+
+    assert(
+      TypeChecker
+        .checkExpression(invalidAdd)
+        .runA(env)
+        .isLeft
+    )
+  }
+
+  // End
+
   test("Check assignment stmts") {
     // Can't test records currently
 
@@ -1623,7 +1765,6 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
       TypeChecker
         .checkModule(CoreTransformer.reduceOberonModule(module))
         .runA(env) == Right(())
-        
     )
   }
 
