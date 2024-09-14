@@ -134,7 +134,12 @@ object TypeChecker {
       for {
         tv <- lookupVariable(v)
         te <- checkExpression(exp)
-        _ <- enforceType(te, tv)
+        _ <- (tv, te) match {
+          case (PointerType(_), NullType) => pure(())
+          case (IntegerType, BooleanType) => pure(())
+          case (BooleanType, IntegerType) => pure(())
+          case _                          => wrapValue(enforceType(te, tv), ())
+        }
       } yield NullType
     }
     case AssignmentStmt(
@@ -172,7 +177,7 @@ object TypeChecker {
       for {
         pt <- lookupPointer(name)
         et <- checkExpression(exp)
-        _ <- enforceType(pt, et)
+        _ <- enforceType(et, pt)
       } yield NullType
     }
     case SequenceStmt(stmts: List[Statement]) => {
@@ -185,19 +190,19 @@ object TypeChecker {
     }
     case NewStmt(n: String) => lookupPointer(n)
     case ReturnStmt(exp: Expression) =>
-      wrapValue[Type](checkExpression(exp), NullType)
+      wrapValue(checkExpression(exp), NullType)
     case ReadLongRealStmt(v: String) =>
-      wrapValue[Type](lookupTypedVariable(v, RealType), NullType)
+      wrapValue(lookupTypedVariable(v, RealType), NullType)
     case ReadRealStmt(v: String) =>
-      wrapValue[Type](lookupTypedVariable(v, RealType), NullType)
+      wrapValue(lookupTypedVariable(v, RealType), NullType)
     case ReadLongIntStmt(v: String) =>
-      wrapValue[Type](lookupTypedVariable(v, IntegerType), NullType)
+      wrapValue(lookupTypedVariable(v, IntegerType), NullType)
     case ReadIntStmt(v: String) =>
-      wrapValue[Type](lookupTypedVariable(v, IntegerType), NullType)
+      wrapValue(lookupTypedVariable(v, IntegerType), NullType)
     case ReadShortIntStmt(v: String) =>
-      wrapValue[Type](lookupTypedVariable(v, IntegerType), NullType)
+      wrapValue(lookupTypedVariable(v, IntegerType), NullType)
     case ReadCharStmt(v: String) =>
-      wrapValue[Type](lookupTypedVariable(v, CharacterType), NullType)
+      wrapValue(lookupTypedVariable(v, CharacterType), NullType)
     case WriteStmt(exp: Expression) => wrapValue(checkExpression(exp), NullType)
     case ProcedureCallStmt(name: String, args: List[Expression]) => {
       for {
@@ -469,7 +474,7 @@ object TypeChecker {
     })
   }
 
-  private def wrapValue[A](wrapped: StateOrError[A], v: A): StateOrError[A] = {
+  private def wrapValue[A, B](wrapped: StateOrError[B], v: A): StateOrError[A] = {
     for {
       _ <- wrapped
     } yield v
@@ -546,7 +551,7 @@ object TypeChecker {
     if (ts.contains(t)) {
       pure(t)
     } else {
-      assertError(s"Unexpected type ${t}.")
+      assertError(s"Unexpected type ${t}. Expected one of ${ts.mkString(", ")}")
     }
   }
 

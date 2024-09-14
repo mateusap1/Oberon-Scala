@@ -999,7 +999,849 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
     assert(TypeChecker.checkStmt(stmt03).runA(env) == Right(NullType))
   }
 
-  // Parei no switch case
+  // Começo
+
+  test(
+    "Test switch-case statement type checker RangeCase (invalid case01 min expression) "
+  ) {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("y", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(15))
+
+    val caseElse = AssignmentStmt(VarAssignment("x"), IntValue(20))
+
+    val case01 = RangeCase(BoolValue(false), IntValue(20), stmt01)
+    val case02 = RangeCase(IntValue(21), IntValue(30), stmt02)
+
+    val cases = List(case01, case02)
+
+    val stmt03 = CaseStmt(IntValue(11), cases, Some(caseElse))
+
+    val testModule = OberonModule(
+      name = "switch-case-test",
+      submodules = Set(),
+      userTypes = Nil,
+      constants = Nil,
+      variables = List(
+        VariableDeclaration("x", IntegerType),
+        VariableDeclaration("y", IntegerType)
+      ),
+      procedures = Nil,
+      tests = Nil,
+      stmt = Some(stmt03)
+    )
+
+    val testModuleCore = CoreTransformer.reduceOberonModule(testModule)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isRight)
+    assert(TypeChecker.checkStmt(caseElse).runA(env).isRight)
+    assert(TypeChecker.checkModule(testModuleCore).runA(env).isLeft)
+  }
+
+  test(
+    "Test switch-case statement type checker RangeCase (invalid case02 min expression) "
+  ) {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("y", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(15))
+
+    val caseElse = AssignmentStmt(VarAssignment("x"), IntValue(20))
+
+    val case01 = RangeCase(IntValue(21), IntValue(20), stmt01)
+    val case02 = RangeCase(BoolValue(false), IntValue(30), stmt02)
+
+    val cases = List(case01, case02)
+
+    val stmt03 = CaseStmt(IntValue(11), cases, Some(caseElse))
+
+    val testModule = OberonModule(
+      name = "switch-case-test",
+      submodules = Set(),
+      userTypes = Nil,
+      constants = Nil,
+      variables = List(
+        VariableDeclaration("x", IntegerType),
+        VariableDeclaration("y", IntegerType)
+      ),
+      procedures = Nil,
+      tests = Nil,
+      stmt = Some(stmt03)
+    )
+
+    val testModuleCore = CoreTransformer.reduceOberonModule(testModule)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isRight)
+    assert(TypeChecker.checkStmt(caseElse).runA(env).isRight)
+    assert(TypeChecker.checkModule(testModuleCore).runA(env).isLeft)
+  }
+
+  test(
+    "Test switch-case statement type checker RangeCase (invalid case01 and case02 min expression) "
+  ) {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("y", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(15))
+
+    val caseElse = AssignmentStmt(VarAssignment("x"), IntValue(20))
+
+    val case01 = RangeCase(BoolValue(false), IntValue(20), stmt01)
+    val case02 = RangeCase(BoolValue(false), IntValue(30), stmt02)
+
+    val cases = List(case01, case02)
+
+    val stmt03 = CaseStmt(IntValue(11), cases, Some(caseElse))
+
+    val testModule = OberonModule(
+      name = "switch-case-test",
+      submodules = Set(),
+      userTypes = Nil,
+      constants = Nil,
+      variables = List(
+        VariableDeclaration("x", IntegerType),
+        VariableDeclaration("y", IntegerType)
+      ),
+      procedures = Nil,
+      tests = Nil,
+      stmt = Some(stmt03)
+    )
+
+    val testModuleCore = CoreTransformer.reduceOberonModule(testModule)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isRight)
+    assert(TypeChecker.checkStmt(caseElse).runA(env).isRight)
+    assert(TypeChecker.checkModule(testModuleCore).runA(env).isLeft)
+  }
+
+  test(
+    "Test switch-case statement type checker RangeCase (invalid case01 and case02 max expression) "
+  ) {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("y", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(15))
+
+    val caseElse = AssignmentStmt(VarAssignment("x"), IntValue(20))
+
+    val case01 = RangeCase(IntValue(20), BoolValue(false), stmt01)
+    val case02 = RangeCase(IntValue(30), BoolValue(false), stmt02)
+
+    val cases = List(case01, case02)
+
+    val stmt03 = CaseStmt(IntValue(11), cases, Some(caseElse))
+
+    val testModule = OberonModule(
+      name = "switch-case-test",
+      submodules = Set(),
+      userTypes = Nil,
+      constants = Nil,
+      variables = List(
+        VariableDeclaration("x", IntegerType),
+        VariableDeclaration("y", IntegerType)
+      ),
+      procedures = Nil,
+      tests = Nil,
+      stmt = Some(stmt03)
+    )
+
+    val testModuleCore = CoreTransformer.reduceOberonModule(testModule)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isRight)
+    assert(TypeChecker.checkStmt(caseElse).runA(env).isRight)
+    assert(TypeChecker.checkModule(testModuleCore).runA(env).isLeft)
+  }
+
+  test(
+    "Test switch-case statement type checker RangeCase (invalid CaseStmt exp) "
+  ) {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("y", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(15))
+
+    val caseElse = AssignmentStmt(VarAssignment("x"), IntValue(20))
+
+    val case01 = RangeCase(IntValue(20), IntValue(30), stmt01)
+    val case02 = RangeCase(IntValue(30), IntValue(40), stmt02)
+
+    val cases = List(case01, case02)
+
+    val stmt03 = CaseStmt(Undef(), cases, Some(caseElse))
+
+    val testModule = OberonModule(
+      name = "switch-case-test",
+      submodules = Set(),
+      userTypes = Nil,
+      constants = Nil,
+      variables = List(
+        VariableDeclaration("x", IntegerType),
+        VariableDeclaration("y", IntegerType)
+      ),
+      procedures = Nil,
+      tests = Nil,
+      stmt = Some(stmt03)
+    )
+
+    val testModuleCore = CoreTransformer.reduceOberonModule(testModule)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isRight)
+    assert(TypeChecker.checkStmt(caseElse).runA(env).isRight)
+    assert(TypeChecker.checkModule(testModuleCore).runA(env).isLeft)
+  }
+
+  ignore("Test switch-case statement type checker SimpleCase (Boolean cases)") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+
+    val caseElse = AssignmentStmt(VarAssignment("x"), IntValue(20))
+
+    val case01 = SimpleCase(BoolValue(true), stmt01)
+    val case02 = SimpleCase(BoolValue(false), stmt01)
+    val cases = List(case01, case02)
+
+    val stmt02 = CaseStmt(BoolValue(true), cases, Some(caseElse))
+
+    val testModule = OberonModule(
+      name = "switch-case-test",
+      submodules = Set(),
+      userTypes = Nil,
+      constants = Nil,
+      variables = List(VariableDeclaration("x", IntegerType)),
+      procedures = Nil,
+      tests = Nil,
+      stmt = Some(stmt02)
+    )
+
+    val testModuleCore = CoreTransformer.reduceOberonModule(testModule)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(caseElse).runA(env).isRight)
+    assert(TypeChecker.checkModule(testModuleCore).runA(env).isRight)
+  }
+
+  test(
+    "Test switch-case statement type checker SimpleCase (invalid case02 condition)"
+  ) {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+
+    val caseElse = AssignmentStmt(VarAssignment("x"), IntValue(20))
+
+    val case01 = SimpleCase(IntValue(10), stmt01)
+    val case02 = SimpleCase(BoolValue(false), stmt01)
+    val cases = List(case01, case02)
+
+    val stmt02 = CaseStmt(IntValue(10), cases, Some(caseElse))
+
+    val testModule = OberonModule(
+      name = "switch-case-test",
+      submodules = Set(),
+      userTypes = Nil,
+      constants = Nil,
+      variables = List(VariableDeclaration("x", IntegerType)),
+      procedures = Nil,
+      tests = Nil,
+      stmt = Some(stmt02)
+    )
+
+    val testModuleCore = CoreTransformer.reduceOberonModule(testModule)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(caseElse).runA(env).isRight)
+    assert(TypeChecker.checkModule(testModuleCore).runA(env).isLeft)
+  }
+
+  test(
+    "Test switch-case statement type checker SimpleCase (invalid case01 and case02 condition)"
+  ) {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+
+    val caseElse = AssignmentStmt(VarAssignment("x"), IntValue(20))
+
+    val case01 = SimpleCase(Undef(), stmt01)
+    val case02 = SimpleCase(Undef(), stmt01)
+    val cases = List(case01, case02)
+
+    val stmt02 = CaseStmt(IntValue(10), cases, Some(caseElse))
+
+    val testModule = OberonModule(
+      name = "switch-case-test",
+      submodules = Set(),
+      userTypes = Nil,
+      constants = Nil,
+      variables = List(VariableDeclaration("x", IntegerType)),
+      procedures = Nil,
+      tests = Nil,
+      stmt = Some(stmt02)
+    )
+
+    val testModuleCore = CoreTransformer.reduceOberonModule(testModule)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(caseElse).runA(env).isRight)
+    assert(TypeChecker.checkModule(testModuleCore).runA(env).isLeft)
+  }
+
+  test("Test switch-case statement type checker RangeCase") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .setGlobalVariable("y", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = AssignmentStmt(VarAssignment("y"), IntValue(15))
+
+    val caseElse = AssignmentStmt(VarAssignment("x"), IntValue(20))
+
+    val case01 = RangeCase(IntValue(10), IntValue(20), stmt01)
+    val case02 = RangeCase(IntValue(21), IntValue(30), stmt02)
+
+    val cases = List(case01, case02)
+
+    val stmt03 = CaseStmt(IntValue(11), cases, Some(caseElse))
+
+    val testModule = OberonModule(
+      name = "switch-case-test",
+      submodules = Set(),
+      userTypes = Nil,
+      constants = Nil,
+      variables = List(
+        VariableDeclaration("x", IntegerType),
+        VariableDeclaration("y", IntegerType)
+      ),
+      procedures = Nil,
+      tests = Nil,
+      stmt = Some(stmt03)
+    )
+
+    val testModuleCore = CoreTransformer.reduceOberonModule(testModule)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isRight)
+    assert(TypeChecker.checkStmt(caseElse).runA(env).isRight)
+    assert(TypeChecker.checkModule(testModuleCore).runA(env).isRight)
+  }
+
+  test("Test switch-case statement type checker SimpleCase") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+
+    val caseElse = AssignmentStmt(VarAssignment("x"), IntValue(20))
+
+    val case01 = SimpleCase(IntValue(10), stmt01)
+    val case02 = SimpleCase(IntValue(20), stmt01)
+    val cases = List(case01, case02)
+
+    val stmt02 = CaseStmt(IntValue(10), cases, Some(caseElse))
+
+    val testModule = OberonModule(
+      name = "switch-case-test",
+      submodules = Set(),
+      userTypes = Nil,
+      constants = Nil,
+      variables = List(VariableDeclaration("x", IntegerType)),
+      procedures = Nil,
+      tests = Nil,
+      stmt = Some(stmt02)
+    )
+
+    val testModuleCore = CoreTransformer.reduceOberonModule(testModule)
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(caseElse).runA(env).isRight)
+    assert(TypeChecker.checkModule(testModuleCore).runA(env).isRight)
+  }
+
+  /*
+   * the following test cases read an oberon module with the
+   * factorial procedure.
+   */
+  test("Test invalid procedure declaration") {
+    val module = parseResource("procedures/procedure04.oberon")
+
+    assert(module.name == "SimpleModule")
+
+    assert(module.procedures.size == 2)
+    assert(module.stmt.isDefined)
+  }
+
+  test("Test the type checker of a valid Repeat statement") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+
+    val condition = LTExpression(VarExpression("x"), IntValue(10))
+    val stmt01 = ReadIntStmt("x")
+    val repeatStmt =
+      CoreTransformer.reduceToCoreStatement(RepeatUntilStmt(condition, stmt01))
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(repeatStmt).runA(env).isRight)
+  }
+
+  test("Test the type checker of a valid Repeat statement 2") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+
+    val condition = EQExpression(VarExpression("x"), IntValue(0))
+    val stmt01 = ReadIntStmt("x")
+    val repeatStmt =
+      CoreTransformer.reduceToCoreStatement(RepeatUntilStmt(condition, stmt01))
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(repeatStmt).runA(env).isRight)
+  }
+
+  test("Test the type checker of a valid Repeat statement 3") {
+    val env = new Environment[Type]()
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+
+    val stmt02 = CoreTransformer.reduceToCoreStatement(
+      RepeatUntilStmt(BoolValue(true), stmt01)
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+  }
+
+  test("Test a invalid Repeat statement in the type checker") {
+    val env = new Environment[Type]()
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val stmt02 = ReadIntStmt("x")
+    val stmt03 = IfElseStmt(BoolValue(false), stmt01, Some(stmt02))
+    val stmt04 = AssignmentStmt(VarAssignment("x"), IntValue(20))
+    val stmt05 = SequenceStmt(List(stmt01, stmt02, stmt03, stmt04))
+    val stmt06 = CoreTransformer.reduceToCoreStatement(
+      RepeatUntilStmt(BoolValue(true), stmt05)
+    )
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt03).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt04).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt05).runA(env).isLeft)
+    assert(TypeChecker.checkStmt(stmt06).runA(env).isLeft)
+  }
+
+  test("Test the type checker of a valid Repeat statement 4") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+
+    val condition = AndExpression(
+      GTEExpression(VarExpression("x"), IntValue(1)),
+      LTEExpression(VarExpression("x"), IntValue(10))
+    )
+    val stmt01 = ReadIntStmt("x")
+    val repeatStmt =
+      CoreTransformer.reduceToCoreStatement(RepeatUntilStmt(condition, stmt01))
+
+    assert(TypeChecker.checkStmt(stmt01).runA(env).isRight)
+    assert(TypeChecker.checkStmt(repeatStmt).runA(env).isRight)
+
+  }
+
+  test("Test a valid Repeat statement, with nested Repeat statements") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val repeatStmt01 = CoreTransformer.reduceToCoreStatement(
+      RepeatUntilStmt(BoolValue(true), stmt01)
+    )
+    val repeatStmt02 = CoreTransformer.reduceToCoreStatement(
+      RepeatUntilStmt(BoolValue(true), repeatStmt01)
+    )
+    val repeatStmt03 = CoreTransformer.reduceToCoreStatement(
+      RepeatUntilStmt(BoolValue(true), repeatStmt02)
+    )
+    val repeatStmt04 = CoreTransformer.reduceToCoreStatement(
+      RepeatUntilStmt(BoolValue(true), repeatStmt03)
+    )
+
+    val allStmts =
+      List(stmt01, repeatStmt01, repeatStmt02, repeatStmt03, repeatStmt04)
+
+    allStmts.foreach(stmt => {
+      assert(TypeChecker.checkStmt(stmt).runA(env).isRight)
+    })
+  }
+
+  test("Test a invalid Repeat statement, with nested Repeat statements") {
+    val env = new Environment[Type]()
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), IntValue(10))
+    val repeatStmt01 = CoreTransformer.reduceToCoreStatement(
+      RepeatUntilStmt(BoolValue(true), stmt01)
+    )
+    val repeatStmt02 = CoreTransformer.reduceToCoreStatement(
+      RepeatUntilStmt(BoolValue(true), repeatStmt01)
+    )
+    val repeatStmt03 = CoreTransformer.reduceToCoreStatement(
+      RepeatUntilStmt(BoolValue(true), repeatStmt02)
+    )
+    val repeatStmt04 = CoreTransformer.reduceToCoreStatement(
+      RepeatUntilStmt(BoolValue(true), repeatStmt03)
+    )
+
+    val allStmts = List(repeatStmt01, repeatStmt02, repeatStmt03, repeatStmt04)
+
+    allStmts.foreach(stmt => {
+      assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+    })
+  }
+
+  test("Test a valid Repeat statement, with a boolean variable") {
+    val env = new Environment[Type]().setGlobalVariable("flag", BooleanType)
+
+    val boolVar = VarExpression("flag")
+    val stmt01 = AssignmentStmt(VarAssignment("flag"), BoolValue(true))
+    val repeatStmt =
+      CoreTransformer.reduceToCoreStatement(RepeatUntilStmt(boolVar, stmt01))
+
+    assert(TypeChecker.checkStmt(repeatStmt).runA(env).isRight)
+  }
+
+  test("Test a valid Repeat statement, with a sequence of statements") {
+    val env = new Environment[Type]().setGlobalVariable("x", IntegerType)
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), BoolValue(false))
+    val repeatStmt = CoreTransformer.reduceToCoreStatement(
+      RepeatUntilStmt(BoolValue(true), stmt01)
+    )
+    val stmt02 = SequenceStmt(List(stmt01, repeatStmt, stmt01, repeatStmt))
+
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isRight)
+  }
+
+  test("Test a invalid Repeat statement, with a sequence of statements") {
+    val env = new Environment[Type]()
+
+    val stmt01 = AssignmentStmt(VarAssignment("x"), BoolValue(false))
+    val repeatStmt = CoreTransformer.reduceToCoreStatement(
+      RepeatUntilStmt(BoolValue(true), stmt01)
+    )
+    val stmt02 = SequenceStmt(List(stmt01, repeatStmt, stmt01, repeatStmt))
+
+    assert(TypeChecker.checkStmt(stmt02).runA(env).isLeft)
+  }
+
+  test("Test a loop statement, from loop_stmt03") {
+    val path = Paths.get(
+      getClass.getClassLoader.getResource("stmts/loop_stmt03.oberon").toURI
+    )
+
+    assert(path != null)
+
+    val content = String.join("\n", Files.readAllLines(path))
+    val module = parseAbs(parse(oberonParser, content))
+
+    assert(module.name == "LoopStmt")
+
+    val env = new Environment[Type]()
+
+    assert(
+      TypeChecker
+        .checkModule(CoreTransformer.reduceOberonModule(module))
+        .runA(env)
+        .isRight
+    )
+  }
+
+  test("Test assignment to pointer value") {
+    val module = parseResource("stmts/tc_PointerAccessStmt.oberon")
+    val env = new Environment[Type]()
+
+    assert(
+      TypeChecker
+        .checkModule(CoreTransformer.reduceOberonModule(module))
+        .runA(env)
+        .isRight
+    )
+  }
+
+  test("Test arithmetic operation with pointers") {
+    val module = parseResource("stmts/tc_PointerOperation.oberon")
+    val env = new Environment[Type]()
+
+    assert(
+      TypeChecker
+        .checkModule(CoreTransformer.reduceOberonModule(module))
+        .runA(env)
+        .isRight
+    )
+  }
+
+  test("Test incorrect assignment between pointer and simple type variable") {
+    val module = parseResource("stmts/tc_PointerAssignmentWrong.oberon")
+    val env = new Environment[Type]()
+
+    assert(
+      TypeChecker
+        .checkModule(CoreTransformer.reduceOberonModule(module))
+        .runA(env)
+        .isLeft
+    )
+  }
+
+  test("Test incorrect assignment between pointer and arithmetic operation") {
+    val module = parseResource("stmts/tc_PointerOperationWrong.oberon")
+    val env = new Environment[Type]()
+
+    assert(
+      TypeChecker
+        .checkModule(CoreTransformer.reduceOberonModule(module))
+        .runA(env)
+        .isLeft
+    )
+  }
+
+  test("Test assignment of NullValue to pointer") {
+    val module = parseResource("stmts/tc_PointerNull.oberon")
+    val env = new Environment[Type]()
+    val reduced = CoreTransformer.reduceOberonModule(module)
+
+    println(reduced)
+
+    assert(
+      TypeChecker
+        .checkModule(CoreTransformer.reduceOberonModule(module))
+        .runA(env) == Right(())
+        
+    )
+  }
+
+  test("Test array subscript") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("arr", ArrayType(1, IntegerType))
+    val stmt = WriteStmt(ArraySubscript(VarExpression("arr"), IntValue(0)))
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isRight)
+  }
+
+  test("Test array subscript, expression of wrong type") {
+    val env = new Environment[Type]().setGlobalVariable("arr", IntegerType)
+    val stmt = WriteStmt(ArraySubscript(VarExpression("arr"), IntValue(0)))
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test array subscript, index of wrong type") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("arr", ArrayType(1, IntegerType))
+    val stmt = WriteStmt(ArraySubscript(VarExpression("arr"), BoolValue(false)))
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test array subscript, expression is ArrayValue") {
+    val env = new Environment[Type]()
+    val stmt =
+      WriteStmt(
+        ArraySubscript(
+          ArrayValue(ListBuffer(IntValue(0)), ArrayType(1, IntegerType)),
+          IntValue(0)
+        )
+      )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isRight)
+  }
+
+  test("Test array subscript, expression is empty ArrayValue") {
+    val env = new Environment[Type]()
+    val stmt =
+      WriteStmt(
+        ArraySubscript(
+          ArrayValue(ListBuffer(), ArrayType(0, IntegerType)),
+          IntValue(0)
+        )
+      )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isRight)
+  }
+
+  test("Test function call") {
+    val env = new Environment[Type]().declareProcedure(
+      Procedure(
+        name = "proc",
+        args = Nil,
+        returnType = None,
+        constants = Nil,
+        variables = Nil,
+        stmt = WriteStmt(IntValue(0))
+      )
+    )
+    val stmt = WriteStmt(FunctionCallExpression("proc", Nil))
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isRight)
+  }
+
+  test("Test function call with args and return type") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .declareProcedure(
+        Procedure(
+          name = "proc",
+          args = List(
+            ParameterByValue("x", IntegerType),
+            ParameterByReference("y", BooleanType)
+          ),
+          returnType = Some(IntegerType),
+          constants = Nil,
+          variables = Nil,
+          stmt = IfElseStmt(
+            VarExpression("y"),
+            ReturnStmt(AddExpression(VarExpression("x"), IntValue(1))),
+            Some(ReturnStmt(AddExpression(VarExpression("x"), IntValue(-1))))
+          )
+        )
+      )
+    val stmt = AssignmentStmt(
+      VarAssignment("x"),
+      FunctionCallExpression("proc", List(IntValue(5), BoolValue(true)))
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isRight)
+  }
+
+  test("Test function call with one argument") {
+    val env = new Environment[Type]().declareProcedure(
+      Procedure(
+        name = "proc",
+        args = List(ParameterByValue("x", IntegerType)),
+        returnType = None,
+        constants = Nil,
+        variables = Nil,
+        stmt = WriteStmt(IntValue(0))
+      )
+    )
+    val stmt = WriteStmt(
+      FunctionCallExpression("proc", List(IntValue(5)))
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isRight)
+  }
+
+  test("Test function call with return type") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("s", StringType)
+      .declareProcedure(
+        Procedure(
+          name = "proc",
+          args = Nil,
+          returnType = Some(StringType),
+          constants = Nil,
+          variables = Nil,
+          stmt = ReturnStmt(StringValue("ret"))
+        )
+      )
+    val stmt = AssignmentStmt(
+      VarAssignment("s"),
+      FunctionCallExpression("proc", Nil)
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isRight)
+  }
+
+  test("Test function call, wrong args") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .declareProcedure(
+        Procedure(
+          name = "proc",
+          args = List(
+            ParameterByValue("x", IntegerType),
+            ParameterByReference("y", BooleanType)
+          ),
+          returnType = Some(IntegerType),
+          constants = Nil,
+          variables = Nil,
+          stmt = IfElseStmt(
+            VarExpression("y"),
+            ReturnStmt(AddExpression(VarExpression("x"), IntValue(1))),
+            Some(ReturnStmt(AddExpression(VarExpression("x"), IntValue(-1))))
+          )
+        )
+      )
+    val stmt = AssignmentStmt(
+      VarAssignment("x"),
+      FunctionCallExpression("proc", List(IntValue(5), IntValue(0)))
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test function call, less args than needed") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .declareProcedure(
+        Procedure(
+          name = "proc",
+          args = List(
+            ParameterByValue("x", IntegerType),
+            ParameterByReference("y", BooleanType)
+          ),
+          returnType = Some(IntegerType),
+          constants = Nil,
+          variables = Nil,
+          stmt = IfElseStmt(
+            VarExpression("y"),
+            ReturnStmt(AddExpression(VarExpression("x"), IntValue(1))),
+            Some(ReturnStmt(AddExpression(VarExpression("x"), IntValue(-1))))
+          )
+        )
+      )
+    val stmt = AssignmentStmt(
+      VarAssignment("x"),
+      FunctionCallExpression("proc", List(IntValue(0)))
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
+
+  test("Test function call, wrong args and return type") {
+    val env = new Environment[Type]()
+      .setGlobalVariable("x", IntegerType)
+      .declareProcedure(
+        Procedure(
+          name = "proc",
+          args = List(
+            ParameterByValue("x", IntegerType),
+            ParameterByReference("y", BooleanType)
+          ),
+          returnType = Some(IntegerType),
+          constants = Nil,
+          variables = Nil,
+          stmt = IfElseStmt(
+            VarExpression("y"),
+            ReturnStmt(AddExpression(VarExpression("x"), IntValue(1))),
+            Some(ReturnStmt(AddExpression(VarExpression("x"), IntValue(-1))))
+          )
+        )
+      )
+    val stmt = AssignmentStmt(
+      VarAssignment("x"),
+      FunctionCallExpression("proc", List(IntValue(5), VarExpression("404")))
+    )
+
+    assert(TypeChecker.checkStmt(stmt).runA(env).isLeft)
+  }
 
   test("Test EAssignment") {
     val env = new Environment[Type]()
