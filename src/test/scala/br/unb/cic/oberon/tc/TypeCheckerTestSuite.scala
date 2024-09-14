@@ -4,13 +4,6 @@ import br.unb.cic.oberon.AbstractTestSuite
 
 import java.nio.file.{Files, Paths}
 import br.unb.cic.oberon.ir.ast._
-import br.unb.cic.oberon.ir.ast.{
-  AndExpression,
-  EQExpression,
-  GTEExpression,
-  LTEExpression,
-  LTExpression
-}
 import br.unb.cic.oberon.parser.ScalaParser
 import br.unb.cic.oberon.parser.Oberon2ScalaParser
 import org.scalatest.funsuite.AnyFunSuite
