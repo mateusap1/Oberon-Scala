@@ -392,11 +392,11 @@ object TACodeGenerator extends CodeGenerator[List[TAC]] {
       case ArraySubscript(array, index) =>
         val (a, insts1) = generateExpression(array, insts)
         val (i, insts2) = generateExpression(index, insts1)
-        val t = new Temporary(checkExpression(expr))
+        val t = new Temporary(checkExpressionSafe(expr))
         return (t, insts2 :+ ArrayGet(a, i, t, ""))
       case PointerAccessExpression(name) =>
         val p = Name(name, LocationType)
-        val t = new Temporary(checkExpression(expr))
+        val t = new Temporary(checkExpressionSafe(expr))
         return (t, insts :+ GetValue(p, t, ""))
 
       case FieldAccessExpression(record, field) =>
@@ -500,6 +500,15 @@ object TACodeGenerator extends CodeGenerator[List[TAC]] {
         t
       }
       case Left(err) => throw new Exception(s"TypeCheckerError: ${err}")
+    }
+
+  private def checkExpressionSafe(exp: Expression) =
+    TypeChecker.checkExpression(exp).run(env) match {
+      case Right((s, t)) => {
+        this.env = s
+        t
+      }
+      case Left(err) => NullType
     }
 
   def load_vars(

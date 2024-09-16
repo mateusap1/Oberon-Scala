@@ -363,8 +363,8 @@ object TypeChecker {
   ): StateOrError[Environment[Type]] = {
     for {
       env <- getEnvironment()
-      nEnv <- us.foldRight[StateOrError[Environment[Type]]](pure(env))(
-        (u, acc) => {
+      nEnv <- us.foldLeft[StateOrError[Environment[Type]]](pure(env))(
+        (acc, u) => {
           for {
             _ <- acc
             nEnv <- addUserDefinedType(u)
