@@ -87,7 +87,7 @@ object Main extends App with Oberon2ScalaParser {
     case Some(conf.repl)        => REPL.runREPL()
   }
 
-  private def compile() {
+  private def compile() = {
     val content = Files.readString(conf.compile.inputPath.get.get)
     val module = parseAbs(parse(oberonParser, content))
 
