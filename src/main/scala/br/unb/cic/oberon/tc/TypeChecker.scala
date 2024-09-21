@@ -40,7 +40,7 @@ object TypeChecker {
       case SubExpression(l, r)  => checkOperationKeepType(l, r, numericTypes)
       case MultExpression(l, r) => checkOperationKeepType(l, r, numericTypes)
       case DivExpression(l, r)  => checkOperationKeepType(l, r, numericTypes)
-      case ModExpression(l, r)  => checkOperationKeepType(l, r, numericTypes)
+      case ModExpression(l, r)  => checkOperationKeepType(l, r, List(IntegerType))
       case AndExpression(l, r) =>
         checkOperation(l, r, List(BooleanType), BooleanType)
       case OrExpression(l, r) =>

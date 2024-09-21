@@ -424,8 +424,6 @@ class TypeCheckerTestSuite extends AnyFunSuite with Oberon2ScalaParser {
     )
   }
 
-  // Start
-
   test("Test expression type on simple values") {
     val env = new Environment[Type]()
     val val10 = IntValue(10)
