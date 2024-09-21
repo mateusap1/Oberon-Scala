@@ -468,9 +468,31 @@ object TACodeGenerator extends CodeGenerator[List[TAC]] {
 
   }
 
+  // private def normalizeRecord(record: Name): Name = {
+  //   record match {
+  //     case Name(id, ReferenceToUserDefinedType(n)) =>
+  //       this.env.lookupUserDefinedType(n) match {
+  //         case Some(UserDefinedType(_, r)) => Name(id, r)
+  //         case _ =>
+  //           throw new Exception(
+  //             "Tried to normalize ReferenceToUserDefinedType to Record, but type is corrupt."
+  //           )
+  //       }
+  //     case Name(id, RecordType(vs)) => Name(id, RecordType(vs))
+  //     case _ =>
+  //       throw new Exception(
+  //         "Tried to normalize to Record, but type is not Record or ReferenceToUserDefinedType."
+  //       )
+  //   }
+  // }
+
   private def getRecordOffset(record: Name, field: String): Constant = {
+    println(record)
+    println(field)
+
     val variables: List[VariableDeclaration] =
       record.t.asInstanceOf[RecordType].variables
+
     val targetIndex: Int = variables.indexWhere(_.name == field)
     val variables2: List[VariableDeclaration] = variables.take(targetIndex + 1)
 
@@ -496,13 +518,13 @@ object TACodeGenerator extends CodeGenerator[List[TAC]] {
   private def checkExpression(exp: Expression) =
     TypeChecker.checkExpression(exp).run(env) match {
       case Right((s, t)) => t
-      case Left(err) => throw new Exception(s"TypeCheckerError: ${err}")
+      case Left(err)     => throw new Exception(s"TypeCheckerError: ${err}")
     }
 
   private def checkExpressionSafe(exp: Expression) =
     TypeChecker.checkExpression(exp).run(env) match {
       case Right((s, t)) => t
-      case Left(err) => NullType
+      case Left(err)     => NullType
     }
 
   def load_vars(
