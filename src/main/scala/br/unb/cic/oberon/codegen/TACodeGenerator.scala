@@ -517,14 +517,28 @@ object TACodeGenerator extends CodeGenerator[List[TAC]] {
 
   private def checkExpression(exp: Expression) =
     TypeChecker.checkExpression(exp).run(env) match {
-      case Right((s, t)) => t
-      case Left(err)     => throw new Exception(s"TypeCheckerError: ${err}")
+      case Right((s, t)) =>
+        env.baseType(t) match {
+          case Some(t) => t
+          case None =>
+            throw new Exception(
+              s"TypeCheckerError: Error while trying to convert to base type."
+            )
+        }
+      case Left(err) => throw new Exception(s"TypeCheckerError: ${err}")
     }
 
   private def checkExpressionSafe(exp: Expression) =
     TypeChecker.checkExpression(exp).run(env) match {
-      case Right((s, t)) => t
-      case Left(err)     => NullType
+      case Right((s, t)) =>
+        env.baseType(t) match {
+          case Some(t) => t
+          case None =>
+            throw new Exception(
+              s"TypeCheckerError: Error while trying to convert to base type."
+            )
+        }
+      case Left(err) => NullType
     }
 
   def load_vars(
