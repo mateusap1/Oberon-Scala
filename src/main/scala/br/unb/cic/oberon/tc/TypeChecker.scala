@@ -264,11 +264,12 @@ object TypeChecker {
         for {
           _ <- acc
           t <- checkExpression(c.exp)
-          _ <- addGlobalVariable(c.name, t)
+          _ <- addLocalVariable(c.name, t)
         } yield ()
       )
       _ <- addLocalVariables(p.variables.map(v => (v.name, v.variableType)))
       _ <- checkStmt(p.stmt)
+      _ <- updateEnvironment(env.pop())
     } yield ()
   }
 
